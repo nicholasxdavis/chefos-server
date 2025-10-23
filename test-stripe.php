@@ -29,32 +29,41 @@ try {
     echo "Webhook Secret: " . (getenv('STRIPE_WB') ? 'SET' : 'NOT SET') . "\n\n";
     
     echo "📊 Testing database connection...\n";
-    $pdo = $stripeService->pdo ?? null;
-    if ($pdo) {
-        echo "✅ Database connection successful!\n";
-        
-        // Test plan limits
-        echo "\n🔧 Testing plan limits...\n";
-        $stmt = $pdo->query("SELECT * FROM plan_limits");
-        $limits = $stmt->fetchAll();
-        foreach ($limits as $limit) {
-            echo "Plan: {$limit['plan_type']} - Recipes: {$limit['max_recipes']}, Menus: {$limit['max_menus']}\n";
+    echo "Host: " . getenv('MARIADB_NAME') . "\n";
+    echo "Database: " . getenv('MARIADB_DATABASE') . "\n";
+    echo "User: " . getenv('MARIADB_USER') . "\n";
+    echo "Password: " . (getenv('MARIADB_PASSWORD') ? 'SET' : 'NOT SET') . "\n";
+    
+    try {
+        $pdo = $stripeService->pdo ?? null;
+        if ($pdo) {
+            echo "✅ Database connection successful!\n";
+            
+            // Test plan limits
+            echo "\n🔧 Testing plan limits...\n";
+            $stmt = $pdo->query("SELECT * FROM plan_limits");
+            $limits = $stmt->fetchAll();
+            foreach ($limits as $limit) {
+                echo "Plan: {$limit['plan_type']} - Recipes: {$limit['max_recipes']}, Menus: {$limit['max_menus']}\n";
+            }
+            
+            // Test usage tracking table
+            echo "\n📈 Testing usage tracking table...\n";
+            $stmt = $pdo->query("SELECT COUNT(*) as count FROM usage_tracking");
+            $count = $stmt->fetch()['count'];
+            echo "Usage tracking records: {$count}\n";
+            
+            // Test billing history table
+            echo "\n💰 Testing billing history table...\n";
+            $stmt = $pdo->query("SELECT COUNT(*) as count FROM billing_history");
+            $count = $stmt->fetch()['count'];
+            echo "Billing history records: {$count}\n";
+            
+        } else {
+            echo "❌ Database connection failed - PDO object is null!\n";
         }
-        
-        // Test usage tracking table
-        echo "\n📈 Testing usage tracking table...\n";
-        $stmt = $pdo->query("SELECT COUNT(*) as count FROM usage_tracking");
-        $count = $stmt->fetch()['count'];
-        echo "Usage tracking records: {$count}\n";
-        
-        // Test billing history table
-        echo "\n💰 Testing billing history table...\n";
-        $stmt = $pdo->query("SELECT COUNT(*) as count FROM billing_history");
-        $count = $stmt->fetch()['count'];
-        echo "Billing history records: {$count}\n";
-        
-    } else {
-        echo "❌ Database connection failed!\n";
+    } catch (Exception $e) {
+        echo "❌ Database connection failed: " . $e->getMessage() . "\n";
     }
     
     echo "\n🧪 Testing Stripe API connectivity...\n";

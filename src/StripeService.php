@@ -21,7 +21,13 @@ class StripeService {
             throw new Exception('Stripe configuration is incomplete. Please check environment variables.');
         }
         
-        $this->pdo = $this->getDatabaseConnection();
+        try {
+            $this->pdo = $this->getDatabaseConnection();
+        } catch (Exception $e) {
+            // Log the error but don't fail the entire service
+            error_log('StripeService database connection failed: ' . $e->getMessage());
+            $this->pdo = null;
+        }
     }
     
     /**
@@ -33,13 +39,21 @@ class StripeService {
         $user = getenv('MARIADB_USER');
         $password = getenv('MARIADB_PASSWORD');
         
+        if (!$host || !$dbname || !$user || !$password) {
+            throw new Exception('Database configuration incomplete. Missing environment variables.');
+        }
+        
         $dsn = "mysql:host={$host};dbname={$dbname};charset=utf8mb4";
         
-        $pdo = new \PDO($dsn, $user, $password);
-        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
-        
-        return $pdo;
+        try {
+            $pdo = new \PDO($dsn, $user, $password);
+            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+            
+            return $pdo;
+        } catch (\PDOException $e) {
+            throw new Exception('Database connection failed: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -125,6 +139,10 @@ class StripeService {
      * Update user subscription in database
      */
     public function updateUserSubscription($userId, $stripeCustomerId, $subscriptionId, $status, $currentPeriodEnd = null) {
+        if (!$this->pdo) {
+            throw new Exception('Database connection not available');
+        }
+        
         $stmt = $this->pdo->prepare("
             UPDATE users 
             SET stripe_customer_id = ?, 
@@ -152,6 +170,10 @@ class StripeService {
      * Get user subscription status
      */
     public function getUserSubscription($userId) {
+        if (!$this->pdo) {
+            throw new Exception('Database connection not available');
+        }
+        
         $stmt = $this->pdo->prepare("
             SELECT u.*, pl.* 
             FROM users u 
@@ -166,6 +188,10 @@ class StripeService {
      * Check if user has exceeded plan limits
      */
     public function checkUsageLimits($userId, $featureType) {
+        if (!$this->pdo) {
+            return ['allowed' => true, 'current' => 0, 'limit' => 0];
+        }
+        
         $user = $this->getUserSubscription($userId);
         
         if (!$user || !$user['max_' . $featureType]) {
@@ -195,6 +221,10 @@ class StripeService {
      * Track usage for billing
      */
     public function trackUsage($userId, $featureType, $actionType, $itemId = null) {
+        if (!$this->pdo) {
+            return false;
+        }
+        
         $stmt = $this->pdo->prepare("
             INSERT INTO usage_tracking (user_id, feature_type, action_type, item_id, usage_date)
             VALUES (?, ?, ?, ?, CURDATE())
@@ -207,6 +237,10 @@ class StripeService {
      * Get usage statistics for user
      */
     public function getUserUsage($userId, $days = 30) {
+        if (!$this->pdo) {
+            return [];
+        }
+        
         $stmt = $this->pdo->prepare("
             SELECT 
                 feature_type,
@@ -226,6 +260,10 @@ class StripeService {
      * Add billing record
      */
     public function addBillingRecord($userId, $stripeInvoiceId, $stripePaymentIntentId, $amount, $currency, $status, $invoiceUrl = null, $paymentDate = null) {
+        if (!$this->pdo) {
+            return false;
+        }
+        
         $stmt = $this->pdo->prepare("
             INSERT INTO billing_history 
             (user_id, stripe_invoice_id, stripe_payment_intent_id, amount, currency, status, invoice_url, payment_date)
@@ -248,6 +286,10 @@ class StripeService {
      * Get billing history for user
      */
     public function getBillingHistory($userId, $limit = 10) {
+        if (!$this->pdo) {
+            return [];
+        }
+        
         $stmt = $this->pdo->prepare("
             SELECT * FROM billing_history 
             WHERE user_id = ? 

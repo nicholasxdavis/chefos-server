@@ -1977,6 +1977,52 @@
         </div>
     </div>
 
+    <!-- Forgot Password Modal -->
+    <div id="forgot-password-modal" class="modal-container" style="display: none;">
+        <div class="modal-content max-w-md">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-lock"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-2">Reset Your Password</h3>
+            <p class="text-base-content/70 mb-6">Enter your email address and we'll send you a link to reset your password.</p>
+            
+            <form id="forgot-password-form" class="space-y-4" onsubmit="return false;">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Email Address</span>
+                    </label>
+                    <input type="email" id="forgot-password-email" class="input input-bordered w-full" placeholder="your@email.com" required autocomplete="email">
+                </div>
+                
+                <div id="forgot-password-error" class="alert alert-error text-sm hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-warning"></use>
+                    </svg>
+                    <span id="forgot-password-error-message">Please enter a valid email address</span>
+                </div>
+                
+                <div id="forgot-password-success" class="alert alert-success text-sm hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-check"></use>
+                    </svg>
+                    <span>Password reset email sent! Check your inbox.</span>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button type="submit" class="btn btn-primary flex-1" id="forgot-password-submit-btn">
+                        <span class="btn-text">Send Reset Link</span>
+                        <span class="loading loading-spinner loading-sm hidden"></span>
+                    </button>
+                    <button type="button" class="btn btn-outline" id="forgot-password-cancel-btn">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="create-account-modal" class="modal-container" style="display: none;">
         <div class="modal-content max-w-lg" id="create-account-content">
             <div class="modal-icon-container">

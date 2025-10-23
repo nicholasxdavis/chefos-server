@@ -3281,9 +3281,353 @@ document.addEventListener('DOMContentLoaded', () => {
     // Forgot password handler
     if (authForgotPassword) {
         authForgotPassword.addEventListener('click', () => {
-            showToast('Password reset feature coming soon! Contact support for assistance.', 'info');
+            showForgotPasswordModal();
         });
     }
+    
+    // Forgot password modal handlers
+    const forgotPasswordModal = document.getElementById('forgot-password-modal');
+    const forgotPasswordForm = document.getElementById('forgot-password-form');
+    const forgotPasswordEmail = document.getElementById('forgot-password-email');
+    const forgotPasswordSubmitBtn = document.getElementById('forgot-password-submit-btn');
+    const forgotPasswordCancelBtn = document.getElementById('forgot-password-cancel-btn');
+    const forgotPasswordError = document.getElementById('forgot-password-error');
+    const forgotPasswordSuccess = document.getElementById('forgot-password-success');
+    
+    if (forgotPasswordForm) {
+        forgotPasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = forgotPasswordEmail.value.trim();
+            
+            if (!email) {
+                showForgotPasswordError('Please enter your email address');
+                return;
+            }
+            
+            if (!isValidEmail(email)) {
+                showForgotPasswordError('Please enter a valid email address');
+                return;
+            }
+            
+            // Show loading state
+            forgotPasswordSubmitBtn.disabled = true;
+            forgotPasswordSubmitBtn.querySelector('.btn-text').textContent = 'Sending...';
+            forgotPasswordSubmitBtn.querySelector('.loading').classList.remove('hidden');
+            
+            try {
+                // Call the password reset API
+                const response = await fetch('/api/auth/request-reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showForgotPasswordSuccess();
+                    // Auto-close modal after 3 seconds
+                    setTimeout(() => {
+                        hideForgotPasswordModal();
+                    }, 3000);
+                } else {
+                    showForgotPasswordError(data.error || 'Failed to send reset email. Please try again.');
+                }
+            } catch (error) {
+                console.error('Password reset error:', error);
+                showForgotPasswordError('Network error. Please check your connection and try again.');
+            } finally {
+                // Reset button state
+                forgotPasswordSubmitBtn.disabled = false;
+                forgotPasswordSubmitBtn.querySelector('.btn-text').textContent = 'Send Reset Link';
+                forgotPasswordSubmitBtn.querySelector('.loading').classList.add('hidden');
+            }
+        });
+    }
+    
+    if (forgotPasswordCancelBtn) {
+        forgotPasswordCancelBtn.addEventListener('click', () => {
+            hideForgotPasswordModal();
+        });
+    }
+    
+    // Forgot password modal helper functions
+    function showForgotPasswordModal() {
+        const forgotPasswordModal = document.getElementById('forgot-password-modal');
+        if (forgotPasswordModal) {
+            forgotPasswordModal.style.display = 'flex';
+            forgotPasswordModal.classList.remove('hidden');
+            // Pre-fill email if available from auth form
+            const authEmail = document.getElementById('auth-email');
+            if (authEmail && authEmail.value) {
+                const forgotEmail = document.getElementById('forgot-password-email');
+                if (forgotEmail) {
+                    forgotEmail.value = authEmail.value;
+                }
+            }
+        }
+    }
+    
+    function hideForgotPasswordModal() {
+        const forgotPasswordModal = document.getElementById('forgot-password-modal');
+        if (forgotPasswordModal) {
+            forgotPasswordModal.style.display = 'none';
+            forgotPasswordModal.classList.add('hidden');
+            // Reset form
+            const forgotPasswordForm = document.getElementById('forgot-password-form');
+            if (forgotPasswordForm) {
+                forgotPasswordForm.reset();
+            }
+            hideForgotPasswordError();
+            hideForgotPasswordSuccess();
+        }
+    }
+    
+    function showForgotPasswordError(message) {
+        const forgotPasswordError = document.getElementById('forgot-password-error');
+        const forgotPasswordErrorMessage = document.getElementById('forgot-password-error-message');
+        const forgotPasswordSuccess = document.getElementById('forgot-password-success');
+        
+        if (forgotPasswordError && forgotPasswordErrorMessage) {
+            forgotPasswordErrorMessage.textContent = message;
+            forgotPasswordError.classList.remove('hidden');
+        }
+        if (forgotPasswordSuccess) {
+            forgotPasswordSuccess.classList.add('hidden');
+        }
+    }
+    
+    function hideForgotPasswordError() {
+        const forgotPasswordError = document.getElementById('forgot-password-error');
+        if (forgotPasswordError) {
+            forgotPasswordError.classList.add('hidden');
+        }
+    }
+    
+    function showForgotPasswordSuccess() {
+        const forgotPasswordSuccess = document.getElementById('forgot-password-success');
+        const forgotPasswordError = document.getElementById('forgot-password-error');
+        
+        if (forgotPasswordSuccess) {
+            forgotPasswordSuccess.classList.remove('hidden');
+        }
+        if (forgotPasswordError) {
+            forgotPasswordError.classList.add('hidden');
+        }
+    }
+    
+    function hideForgotPasswordSuccess() {
+        const forgotPasswordSuccess = document.getElementById('forgot-password-success');
+        if (forgotPasswordSuccess) {
+            forgotPasswordSuccess.classList.add('hidden');
+        }
+    }
+    
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+    
+    // Storage location management functions
+    function getStorageLocation() {
+        return localStorage.getItem('chefos_storage_location') || 'local';
+    }
+    
+    function isCloudStorageEnabled() {
+        return getStorageLocation() === 'cloud';
+    }
+    
+    function enableNextcloudStorage() {
+        // Set environment variable for Nextcloud storage
+        localStorage.setItem('chefos_nextcloud_enabled', 'true');
+        showToast('Nextcloud storage enabled for menus and PDFs', 'info');
+    }
+    
+    function disableNextcloudStorage() {
+        // Remove Nextcloud storage setting
+        localStorage.removeItem('chefos_nextcloud_enabled');
+        showToast('Nextcloud storage disabled', 'info');
+    }
+    
+    function isNextcloudStorageEnabled() {
+        return localStorage.getItem('chefos_nextcloud_enabled') === 'true';
+    }
+    
+    // Storage strategy functions
+    function shouldUseNextcloudStorage(dataType) {
+        // Only use Nextcloud for menus and PDFs when cloud storage is enabled
+        if (isCloudStorageEnabled() && isNextcloudStorageEnabled()) {
+            return ['menu', 'pdf', 'menus'].includes(dataType.toLowerCase());
+        }
+        return false;
+    }
+    
+    function shouldStoreToSQL(dataType) {
+        // Always store JSON data to SQL regardless of storage location
+        return ['recipe', 'menu', 'calendar', 'shopping_list', 'store', 'user_preferences'].includes(dataType.toLowerCase());
+    }
+    
+    function shouldStoreLocally(dataType) {
+        // Store locally for everything except menus and PDFs when cloud is enabled
+        if (isCloudStorageEnabled() && isNextcloudStorageEnabled()) {
+            return !['menu', 'pdf', 'menus'].includes(dataType.toLowerCase());
+        }
+        return true; // Default to local storage
+    }
+    
+    // Enhanced storage functions
+    async function saveData(dataType, data, options = {}) {
+        const results = {};
+        
+        // Always save to SQL for JSON data
+        if (shouldStoreToSQL(dataType)) {
+            try {
+                results.sql = await saveToSQL(dataType, data, options);
+            } catch (error) {
+                console.error('SQL storage error:', error);
+                results.sql = { success: false, error: error.message };
+            }
+        }
+        
+        // Save to Nextcloud for menus and PDFs when enabled
+        if (shouldUseNextcloudStorage(dataType)) {
+            try {
+                results.nextcloud = await saveToNextcloud(dataType, data, options);
+            } catch (error) {
+                console.error('Nextcloud storage error:', error);
+                results.nextcloud = { success: false, error: error.message };
+            }
+        }
+        
+        // Save locally when appropriate
+        if (shouldStoreLocally(dataType)) {
+            try {
+                results.local = await saveToLocal(dataType, data, options);
+            } catch (error) {
+                console.error('Local storage error:', error);
+                results.local = { success: false, error: error.message };
+            }
+        }
+        
+        return results;
+    }
+    
+    async function loadData(dataType, options = {}) {
+        // Try to load from multiple sources
+        const results = {};
+        
+        // Try SQL first
+        if (shouldStoreToSQL(dataType)) {
+            try {
+                results.sql = await loadFromSQL(dataType, options);
+                if (results.sql && results.sql.success) {
+                    return results.sql;
+                }
+            } catch (error) {
+                console.error('SQL load error:', error);
+                results.sql = { success: false, error: error.message };
+            }
+        }
+        
+        // Try Nextcloud for menus and PDFs
+        if (shouldUseNextcloudStorage(dataType)) {
+            try {
+                results.nextcloud = await loadFromNextcloud(dataType, options);
+                if (results.nextcloud && results.nextcloud.success) {
+                    return results.nextcloud;
+                }
+            } catch (error) {
+                console.error('Nextcloud load error:', error);
+                results.nextcloud = { success: false, error: error.message };
+            }
+        }
+        
+        // Try local storage as fallback
+        if (shouldStoreLocally(dataType)) {
+            try {
+                results.local = await loadFromLocal(dataType, options);
+                if (results.local && results.local.success) {
+                    return results.local;
+                }
+            } catch (error) {
+                console.error('Local load error:', error);
+                results.local = { success: false, error: error.message };
+            }
+        }
+        
+        return { success: false, error: 'No data found in any storage location', results };
+    }
+    
+    // Storage implementation functions (placeholders - implement based on your existing API)
+    async function saveToSQL(dataType, data, options) {
+        // Implement SQL save logic using your existing API
+        const response = await fetch(`/api/${dataType}s`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return await response.json();
+    }
+    
+    async function saveToNextcloud(dataType, data, options) {
+        // Implement Nextcloud save logic using your NextcloudService
+        if (window.ChefOSNextcloud) {
+            return await window.ChefOSNextcloud.uploadFile(data, `${dataType}s/${options.filename || 'file'}`);
+        }
+        return { success: false, error: 'Nextcloud service not available' };
+    }
+    
+    async function saveToLocal(dataType, data, options) {
+        // Implement local storage save logic
+        const key = `chefos_${dataType}_${options.id || 'default'}`;
+        localStorage.setItem(key, JSON.stringify(data));
+        return { success: true, key };
+    }
+    
+    async function loadFromSQL(dataType, options) {
+        // Implement SQL load logic using your existing API
+        const response = await fetch(`/api/${dataType}s/${options.id || ''}`);
+        return await response.json();
+    }
+    
+    async function loadFromNextcloud(dataType, options) {
+        // Implement Nextcloud load logic using your NextcloudService
+        if (window.ChefOSNextcloud) {
+            return await window.ChefOSNextcloud.downloadFile(`${dataType}s/${options.filename || 'file'}`);
+        }
+        return { success: false, error: 'Nextcloud service not available' };
+    }
+    
+    async function loadFromLocal(dataType, options) {
+        // Implement local storage load logic
+        const key = `chefos_${dataType}_${options.id || 'default'}`;
+        const data = localStorage.getItem(key);
+        if (data) {
+            return { success: true, data: JSON.parse(data) };
+        }
+        return { success: false, error: 'No local data found' };
+    }
+    
+    // Make storage functions globally available
+    window.ChefOSStorage = {
+        getStorageLocation,
+        isCloudStorageEnabled,
+        isNextcloudStorageEnabled,
+        shouldUseNextcloudStorage,
+        shouldStoreToSQL,
+        shouldStoreLocally,
+        saveData,
+        loadData,
+        saveToSQL,
+        saveToNextcloud,
+        saveToLocal,
+        loadFromSQL,
+        loadFromNextcloud,
+        loadFromLocal
+    };
     
     // Create account handler
     if (authCreateAccount) {
@@ -3825,6 +4169,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (localStorageRadio.checked) {
                 localStorage.setItem('chefos_storage_location', 'local');
                 showToast('Switched to Local Device Storage', 'success');
+                
+                // Disable Nextcloud storage when switching to local
+                disableNextcloudStorage();
             }
         });
         
@@ -3835,6 +4182,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     showToast('Cloud sync enabled. Your data is being backed up.', 'info');
                 }, 1500);
+                
+                // Enable Nextcloud storage for menus and PDFs
+                enableNextcloudStorage();
             }
         });
     }
