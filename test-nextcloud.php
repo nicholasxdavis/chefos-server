@@ -38,8 +38,10 @@ try {
     
     // Test basic connection
     echo "\n🔍 Testing basic connection...\n";
-    $testUrl = getenv('NEXTCLOUD_URL') . '/remote.php/dav/files/' . getenv('NEXTCLOUD_USERNAME') . '/';
+    $encodedUsername = rawurlencode(getenv('NEXTCLOUD_USERNAME'));
+    $testUrl = getenv('NEXTCLOUD_URL') . '/remote.php/dav/files/' . $encodedUsername . '/';
     echo "Testing URL: " . $testUrl . "\n";
+    echo "Encoded Username: " . $encodedUsername . "\n";
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $testUrl);

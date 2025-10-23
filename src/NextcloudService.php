@@ -31,7 +31,8 @@ class NextcloudService {
      */
     public function uploadFile($localFilePath, $remotePath, $content = null) {
         $remotePath = $this->baseFolder . '/' . ltrim($remotePath, '/');
-        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $this->username . $remotePath;
+        $encodedUsername = rawurlencode($this->username);
+        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $encodedUsername . $remotePath;
         
         $headers = [
             'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password),
@@ -80,7 +81,8 @@ class NextcloudService {
      */
     public function downloadFile($remotePath) {
         $remotePath = $this->baseFolder . '/' . ltrim($remotePath, '/');
-        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $this->username . $remotePath;
+        $encodedUsername = rawurlencode($this->username);
+        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $encodedUsername . $remotePath;
         
         $headers = [
             'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password)
@@ -108,7 +110,8 @@ class NextcloudService {
      */
     public function deleteFile($remotePath) {
         $remotePath = $this->baseFolder . '/' . ltrim($remotePath, '/');
-        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $this->username . $remotePath;
+        $encodedUsername = rawurlencode($this->username);
+        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $encodedUsername . $remotePath;
         
         $headers = [
             'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password)
@@ -137,7 +140,8 @@ class NextcloudService {
      */
     public function listFiles($remotePath = '') {
         $remotePath = $this->baseFolder . '/' . ltrim($remotePath, '/');
-        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $this->username . $remotePath;
+        $encodedUsername = rawurlencode($this->username);
+        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $encodedUsername . $remotePath;
         
         $headers = [
             'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password),
@@ -187,7 +191,8 @@ class NextcloudService {
      */
     public function createDirectory($remotePath) {
         $remotePath = $this->baseFolder . '/' . ltrim($remotePath, '/');
-        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $this->username . $remotePath;
+        $encodedUsername = rawurlencode($this->username);
+        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $encodedUsername . $remotePath;
         
         $headers = [
             'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password)
