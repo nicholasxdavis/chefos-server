@@ -2,6 +2,7 @@
 // Menus API Endpoint
 
 use ChefOS\Database\Database;
+use ChefOS\Storage\NextcloudService;
 
 try {
     $pdo = Database::getConnection();
@@ -45,9 +46,29 @@ try {
             $menuId = uniqid('menu_');
             $userId = 1; // For now, use user ID 1
             
+            // Handle file upload to Nextcloud if provided
+            $filePath = null;
+            if (isset($input['file_data']) && !empty($input['file_data'])) {
+                // Check if it's a large file that should go to Nextcloud
+                $fileSize = strlen($input['file_data']);
+                if ($fileSize > 50000) { // 50KB threshold for files
+                    try {
+                        require dirname(__DIR__, 2) . '/src/NextcloudService.php';
+                        $nextcloud = new NextcloudService();
+                        $fileName = $input['file_name'] ?? $menuId . '_' . time() . '.pdf';
+                        $result = $nextcloud->uploadFile(null, 'menus/' . $fileName, $input['file_data']);
+                        $filePath = $result['path'];
+                        $input['file_data'] = null; // Clear file data
+                    } catch (Exception $e) {
+                        // If Nextcloud fails, keep as blob
+                        error_log('Nextcloud upload failed: ' . $e->getMessage());
+                    }
+                }
+            }
+            
             $stmt = $pdo->prepare("
-                INSERT INTO menus (id, user_id, name, description, type, file_name, file_data) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO menus (id, user_id, name, description, type, file_name, file_path, file_data) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
             
             $stmt->execute([
@@ -57,6 +78,7 @@ try {
                 $input['description'] ?? null,
                 $input['type'] ?? 'recipe',
                 $input['file_name'] ?? null,
+                $filePath,
                 $input['file_data'] ?? null
             ]);
             

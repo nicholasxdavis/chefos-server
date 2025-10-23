@@ -2,6 +2,7 @@
 // Recipes API Endpoint
 
 use ChefOS\Database\Database;
+use ChefOS\Storage\NextcloudService;
 
 try {
     $pdo = Database::getConnection();
@@ -45,9 +46,30 @@ try {
             $recipeId = uniqid('recipe_');
             $userId = 1; // For now, use user ID 1 - you can get this from session/auth later
             
+            // Handle image upload to Nextcloud if provided
+            $imagePath = null;
+            if (isset($input['image_data']) && !empty($input['image_data'])) {
+                // Check if it's a large image that should go to Nextcloud
+                $imageSize = strlen(base64_decode($input['image_data']));
+                if ($imageSize > 100000) { // 100KB threshold
+                    try {
+                        require dirname(__DIR__, 2) . '/src/NextcloudService.php';
+                        $nextcloud = new NextcloudService();
+                        $imageContent = base64_decode($input['image_data']);
+                        $imageFileName = $recipeId . '_' . time() . '.jpg';
+                        $result = $nextcloud->uploadFile(null, 'recipes/' . $imageFileName, $imageContent);
+                        $imagePath = $result['path'];
+                        $input['image_data'] = null; // Clear base64 data
+                    } catch (Exception $e) {
+                        // If Nextcloud fails, keep as base64
+                        error_log('Nextcloud upload failed: ' . $e->getMessage());
+                    }
+                }
+            }
+            
             $stmt = $pdo->prepare("
-                INSERT INTO recipes (id, user_id, name, original_servings, target_servings, yield_unit, instructions, image_data, type) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO recipes (id, user_id, name, original_servings, target_servings, yield_unit, instructions, image_data, image_path, type) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             
             $stmt->execute([
@@ -59,6 +81,7 @@ try {
                 $input['yield_unit'] ?? null,
                 $input['instructions'] ?? null,
                 $input['image_data'] ?? null,
+                $imagePath,
                 $input['type'] ?? 'direct'
             ]);
             

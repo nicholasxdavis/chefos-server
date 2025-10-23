@@ -56,7 +56,8 @@ try {
                 target_servings DECIMAL(10, 2) NOT NULL,
                 yield_unit VARCHAR(50) NULL,
                 instructions TEXT NULL,
-                image_data TEXT NULL, -- Base64 data for simplicity, consider object storage (Nextcloud) for production images
+                image_data TEXT NULL, -- Base64 data for small images, Nextcloud path for larger files
+                image_path VARCHAR(500) NULL, -- Nextcloud file path for images
                 type ENUM('direct', 'scaled') NOT NULL DEFAULT 'direct',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -73,7 +74,8 @@ try {
                 description TEXT NULL,
                 type ENUM('recipe', 'file') NOT NULL DEFAULT 'recipe',
                 file_name VARCHAR(255) NULL,
-                file_data LONGBLOB NULL, -- For file-based menus (or store reference to Nextcloud)
+                file_path VARCHAR(500) NULL, -- Nextcloud file path for PDF files
+                file_data LONGBLOB NULL, -- For small files only, use Nextcloud for larger files
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -161,6 +163,22 @@ try {
     }
     
     echo "\n✨ Database initialization complete. Tables are ready. ✨\n";
+    
+    // Test Nextcloud connection if configured
+    if (getenv('STORAGE_DRIVER') === 'nextcloud') {
+        echo "\n🔗 Testing Nextcloud integration...\n";
+        try {
+            require $baseDir . '/src/NextcloudService.php';
+            $nextcloud = new \ChefOS\Storage\NextcloudService();
+            echo "✅ Nextcloud service initialized successfully.\n";
+            echo "URL: " . getenv('NEXTCLOUD_URL') . "\n";
+            echo "Username: " . getenv('NEXTCLOUD_USERNAME') . "\n";
+            echo "Base Folder: " . (getenv('NEXTCLOUD_BASE_FOLDER') ?: '/ChefOS') . "\n";
+        } catch (Exception $e) {
+            echo "⚠️  Nextcloud integration warning: " . $e->getMessage() . "\n";
+            echo "Files will be stored locally until Nextcloud is properly configured.\n";
+        }
+    }
 
 } catch (PDOException $e) {
     echo "\n❌ FATAL DATABASE ERROR:\n";

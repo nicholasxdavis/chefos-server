@@ -14,10 +14,19 @@ Your ChefOS backend is now ready! Here's what has been set up:
 ### 🔧 Environment Variables (Already Set in Coolify)
 
 Make sure these are set in your Coolify environment:
+
+**MariaDB Database:**
 - `MARIADB_URL`
 - `MARIADB_DATABASE` 
 - `MARIADB_USER`
 - `MARIADB_PASSWORD`
+- `MARIADB_NAME`
+
+**Nextcloud Storage:**
+- `NEXTCLOUD_URL` - Your Nextcloud server URL (https://cloud.blacnova.net/)
+- `NEXTCLOUD_USERNAME` - Nextcloud admin username
+- `NEXTCLOUD_PASSWORD` - Nextcloud admin password
+- `STORAGE_DRIVER=nextcloud` - Enable Nextcloud integration
 
 ### 📋 Setup Steps
 
@@ -33,7 +42,12 @@ Make sure these are set in your Coolify environment:
    ```
    This will create all the necessary database tables.
 
-3. **Install Dependencies** (if not already done):
+3. **Test Nextcloud Integration**:
+   ```
+   Visit: https://your-domain.com/test-nextcloud.php
+   ```
+
+4. **Install Dependencies** (if not already done):
    ```bash
    composer install
    npm install
