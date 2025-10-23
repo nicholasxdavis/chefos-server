@@ -16,7 +16,7 @@ class Database {
     public static function getConnection(): PDO {
         if (self::$pdo === null) {
             // Coolify/Hostinger environment variables
-            $host = getenv('MARIADB_URL') ?: '127.00.1';
+            $host = getenv('MARIADB_NAME') ?: '127.0.0.1';
             $db   = getenv('MARIADB_DATABASE');
             $user = getenv('MARIADB_USER');
             $pass = getenv('MARIADB_PASSWORD');

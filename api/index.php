@@ -21,6 +21,9 @@ require $baseDir . '/vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable($baseDir);
 $dotenv->safeLoad();
 
+// Direct require for Database class to ensure it's loaded
+require $baseDir . '/src/Database.php';
+
 use ChefOS\Database\Database;
 
 try {

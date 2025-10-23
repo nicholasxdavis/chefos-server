@@ -21,6 +21,10 @@ try {
     use ChefOS\Database\Database;
     
     echo "🔌 Testing database connection...\n";
+    echo "Host: " . getenv('MARIADB_NAME') . "\n";
+    echo "Database: " . getenv('MARIADB_DATABASE') . "\n";
+    echo "User: " . getenv('MARIADB_USER') . "\n";
+    echo "Password: " . (getenv('MARIADB_PASSWORD') ? 'SET' : 'NOT SET') . "\n\n";
     
     $pdo = Database::getConnection();
     echo "✅ Database connection successful!\n\n";
