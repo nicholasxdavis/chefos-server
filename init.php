@@ -42,7 +42,16 @@ try {
                 password_hash VARCHAR(255) NOT NULL,
                 plan ENUM('trial', 'pro') NOT NULL DEFAULT 'trial',
                 plan_expiry DATETIME NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                reset_token VARCHAR(255) NULL,
+                reset_token_expires TIMESTAMP NULL,
+                email_verified BOOLEAN DEFAULT FALSE,
+                email_verification_token VARCHAR(255) NULL,
+                stripe_customer_id VARCHAR(255) NULL,
+                stripe_subscription_id VARCHAR(255) NULL,
+                subscription_status ENUM('active', 'canceled', 'past_due', 'unpaid', 'trialing') NULL,
+                subscription_current_period_end TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             );
         ",
         
@@ -153,6 +162,54 @@ try {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+        ",
+
+        // 10. Usage Tracking Table
+        'usage_tracking' => "
+            CREATE TABLE IF NOT EXISTS usage_tracking (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                feature_type ENUM('recipe', 'menu', 'calendar', 'shopping_list', 'store') NOT NULL,
+                action_type ENUM('create', 'update', 'delete', 'view') NOT NULL,
+                item_id VARCHAR(255) NULL,
+                usage_date DATE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_user_date (user_id, usage_date),
+                INDEX idx_user_feature (user_id, feature_type)
+            );
+        ",
+
+        // 11. Billing History Table
+        'billing_history' => "
+            CREATE TABLE IF NOT EXISTS billing_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                stripe_invoice_id VARCHAR(255) NULL,
+                stripe_payment_intent_id VARCHAR(255) NULL,
+                amount DECIMAL(10, 2) NOT NULL,
+                currency VARCHAR(3) DEFAULT 'usd',
+                status ENUM('pending', 'paid', 'failed', 'refunded') NOT NULL,
+                invoice_url VARCHAR(500) NULL,
+                payment_date TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+        ",
+
+        // 12. Plan Limits Table
+        'plan_limits' => "
+            CREATE TABLE IF NOT EXISTS plan_limits (
+                plan_type ENUM('trial', 'pro') PRIMARY KEY,
+                max_recipes INT DEFAULT 50,
+                max_menus INT DEFAULT 20,
+                max_stores INT DEFAULT 10,
+                max_calendar_items INT DEFAULT 100,
+                max_shopping_lists INT DEFAULT 5,
+                storage_limit_mb INT DEFAULT 100,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            );
         "
     ];
     
@@ -163,6 +220,51 @@ try {
     }
     
     echo "\n✨ Database initialization complete. Tables are ready. ✨\n";
+    
+    // Initialize plan limits
+    echo "\n🔧 Initializing plan limits...\n";
+    $planLimits = [
+        'trial' => [
+            'max_recipes' => 10,
+            'max_menus' => 5,
+            'max_stores' => 3,
+            'max_calendar_items' => 50,
+            'max_shopping_lists' => 2,
+            'storage_limit_mb' => 50
+        ],
+        'pro' => [
+            'max_recipes' => 1000,
+            'max_menus' => 500,
+            'max_stores' => 100,
+            'max_calendar_items' => 5000,
+            'max_shopping_lists' => 50,
+            'storage_limit_mb' => 1000
+        ]
+    ];
+    
+    foreach ($planLimits as $planType => $limits) {
+        $stmt = $pdo->prepare("
+            INSERT INTO plan_limits (plan_type, max_recipes, max_menus, max_stores, max_calendar_items, max_shopping_lists, storage_limit_mb)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+            max_recipes = VALUES(max_recipes),
+            max_menus = VALUES(max_menus),
+            max_stores = VALUES(max_stores),
+            max_calendar_items = VALUES(max_calendar_items),
+            max_shopping_lists = VALUES(max_shopping_lists),
+            storage_limit_mb = VALUES(storage_limit_mb)
+        ");
+        $stmt->execute([
+            $planType,
+            $limits['max_recipes'],
+            $limits['max_menus'],
+            $limits['max_stores'],
+            $limits['max_calendar_items'],
+            $limits['max_shopping_lists'],
+            $limits['storage_limit_mb']
+        ]);
+        echo "✅ Plan limits for '$planType' initialized.\n";
+    }
     
     // Test Nextcloud connection if configured
     if (getenv('STORAGE_DRIVER') === 'nextcloud') {

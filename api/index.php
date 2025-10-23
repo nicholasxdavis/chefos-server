@@ -41,6 +41,13 @@ try {
     $routes = [
         '/auth/login' => 'auth/login.php',
         '/auth/register' => 'auth/register.php',
+        '/auth/request-reset' => 'auth/request-reset.php',
+        '/auth/verify-reset-token' => 'auth/verify-reset-token.php',
+        '/auth/reset-password' => 'auth/reset-password.php',
+        '/billing/create-checkout' => 'billing/create-checkout.php',
+        '/billing/create-portal' => 'billing/create-portal.php',
+        '/billing/subscription-status' => 'billing/subscription-status.php',
+        '/billing/usage-track' => 'billing/usage-track.php',
         '/recipes' => 'recipes/index.php',
         '/menus' => 'menus/index.php',
         '/stores' => 'stores/index.php',
