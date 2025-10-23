@@ -24,8 +24,8 @@ try {
     echo "✅ EmailJS service initialized successfully!\n\n";
     
     // Test email addresses (replace with your test emails)
-    $testEmail = 'test@example.com'; // Replace with your test email
-    $testUserName = 'Test User';
+    $testEmail = 'nicolasxdavis@gmail.com'; // Replace with your test email
+    $testUserName = 'Nicholas Davis';
     
     echo "🔑 Testing password reset token generation...\n";
     $resetToken = $emailService->generateResetToken();
@@ -37,6 +37,9 @@ try {
     
     echo "📤 Testing welcome email sending...\n";
     echo "Sending to: " . $testEmail . "\n";
+    echo "Service ID: " . $emailService->serviceId . "\n";
+    echo "Template ID: " . $emailService->welcomeTemplateId . "\n";
+    echo "Template Parameters: to_email=" . $testEmail . ", email=" . $testEmail . ", Greeting=Welcome to ChefOS!, Message=Thank you for joining ChefOS..., ActionURL=https://chefos.blacnova.net\n";
     try {
         $result = $emailService->sendWelcomeEmail(
             $testEmail,
@@ -52,6 +55,8 @@ try {
     
     echo "📤 Testing password reset email sending...\n";
     echo "Sending to: " . $testEmail . "\n";
+    echo "Template ID: " . $emailService->resetTemplateId . "\n";
+    echo "Template Parameters: to_email=" . $testEmail . ", email=" . $testEmail . ", UserName=" . $testUserName . ", ResetURL=" . $resetUrl . "\n";
     try {
         $result = $emailService->sendPasswordResetEmail(
             $testEmail,
@@ -66,7 +71,7 @@ try {
     
     echo "🎉 EmailJS integration test completed!\n";
     echo "Your ChefOS is ready to send emails via EmailJS.\n";
-    echo "\n📝 Note: Replace 'test@example.com' with your actual test email address to receive test emails.\n";
+    echo "\n📝 Note: Test emails are being sent to: " . $testEmail . "\n";
     
 } catch (Exception $e) {
     echo "\n❌ EMAIL INTEGRATION ERROR:\n";

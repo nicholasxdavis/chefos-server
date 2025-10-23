@@ -3,7 +3,6 @@
 namespace ChefOS\Services;
 
 use Exception;
-use ChefOS\Database\Database;
 
 class StripeService {
     private $secretKey;
@@ -22,7 +21,25 @@ class StripeService {
             throw new Exception('Stripe configuration is incomplete. Please check environment variables.');
         }
         
-        $this->pdo = Database::getConnection();
+        $this->pdo = $this->getDatabaseConnection();
+    }
+    
+    /**
+     * Get database connection
+     */
+    private function getDatabaseConnection() {
+        $host = getenv('MARIADB_NAME');
+        $dbname = getenv('MARIADB_DATABASE');
+        $user = getenv('MARIADB_USER');
+        $password = getenv('MARIADB_PASSWORD');
+        
+        $dsn = "mysql:host={$host};dbname={$dbname};charset=utf8mb4";
+        
+        $pdo = new \PDO($dsn, $user, $password);
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+        
+        return $pdo;
     }
     
     /**

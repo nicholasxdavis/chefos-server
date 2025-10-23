@@ -5,11 +5,11 @@ namespace ChefOS\Services;
 use Exception;
 
 class EmailService {
-    private $serviceId;
-    private $publicKey;
+    public $serviceId;
+    public $publicKey;
     private $privateKey;
-    private $welcomeTemplateId;
-    private $resetTemplateId;
+    public $welcomeTemplateId;
+    public $resetTemplateId;
     
     public function __construct() {
         $this->serviceId = 'service_v6ncinu';
@@ -28,6 +28,7 @@ class EmailService {
         }
         
         $templateParams = [
+            'to_email' => $email,
             'email' => $email,
             'Greeting' => $greeting,
             'Message' => $message,
@@ -42,6 +43,7 @@ class EmailService {
      */
     public function sendPasswordResetEmail($email, $userName, $resetUrl) {
         $templateParams = [
+            'to_email' => $email,
             'email' => $email,
             'UserName' => $userName,
             'ResetURL' => $resetUrl
@@ -60,7 +62,8 @@ class EmailService {
             'service_id' => $this->serviceId,
             'template_id' => $templateId,
             'user_id' => $this->publicKey,
-            'template_params' => $templateParams
+            'template_params' => $templateParams,
+            'accessToken' => $this->privateKey
         ];
         
         $ch = curl_init();
@@ -88,7 +91,8 @@ class EmailService {
         if ($httpCode !== 200) {
             $responseData = json_decode($response, true);
             $errorMessage = isset($responseData['message']) ? $responseData['message'] : 'Unknown error';
-            throw new Exception("EmailJS API error (HTTP $httpCode): " . $errorMessage);
+            $errorText = isset($responseData['text']) ? $responseData['text'] : $response;
+            throw new Exception("EmailJS API error (HTTP $httpCode): " . $errorMessage . " - Response: " . $errorText);
         }
         
         return [
