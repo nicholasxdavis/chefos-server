@@ -67,16 +67,24 @@ try {
     
     echo "📁 Testing directory creation...\n";
     try {
-        $nextcloud->createDirectory('test');
-        echo "✅ Test directory created successfully.\n";
+        $result = $nextcloud->createDirectory('test-folder');
+        if ($result) {
+            echo "✅ Directory created successfully!\n";
+        } else {
+            echo "⚠️  Directory creation failed\n";
+        }
     } catch (Exception $e) {
         echo "⚠️  Directory creation failed: " . $e->getMessage() . "\n";
     }
     
-    echo "📁 Testing nested directory creation...\n";
+    echo "\n📁 Testing nested directory creation...\n";
     try {
-        $nextcloud->createDirectory('nested/deep/folder');
-        echo "✅ Nested directory created successfully.\n";
+        $result = $nextcloud->createDirectory('nested/deep/folder');
+        if ($result) {
+            echo "✅ Nested directory created successfully!\n";
+        } else {
+            echo "⚠️  Nested directory creation failed\n";
+        }
     } catch (Exception $e) {
         echo "⚠️  Nested directory creation failed: " . $e->getMessage() . "\n";
     }
@@ -84,22 +92,63 @@ try {
     echo "\n📄 Testing file upload...\n";
     try {
         $testContent = "ChefOS Test File - " . date('Y-m-d H:i:s');
-        $result = $nextcloud->uploadFile(null, 'test/chefos-test.txt', $testContent);
-        echo "✅ Test file uploaded successfully.\n";
-        echo "Path: " . $result['path'] . "\n";
+        $result = $nextcloud->uploadFile(null, 'test-folder/chefos-test.txt', $testContent);
+        if ($result && isset($result['path'])) {
+            echo "✅ Test file uploaded successfully!\n";
+            echo "Path: " . $result['path'] . "\n";
+        } else {
+            echo "⚠️  File upload failed\n";
+        }
     } catch (Exception $e) {
         echo "❌ File upload failed: " . $e->getMessage() . "\n";
     }
     
+    echo "\n📄 Testing nested file upload...\n";
+    try {
+        $testContent = "ChefOS Nested Test File - " . date('Y-m-d H:i:s');
+        $result = $nextcloud->uploadFile(null, 'nested/deep/folder/nested-test.txt', $testContent);
+        if ($result && isset($result['path'])) {
+            echo "✅ Nested file uploaded successfully!\n";
+            echo "Path: " . $result['path'] . "\n";
+        } else {
+            echo "⚠️  Nested file upload failed\n";
+        }
+    } catch (Exception $e) {
+        echo "❌ Nested file upload failed: " . $e->getMessage() . "\n";
+    }
+    
     echo "\n📋 Testing file listing...\n";
     try {
-        $files = $nextcloud->listFiles('test');
+        $files = $nextcloud->listFiles('test-folder');
         echo "✅ File listing successful. Found " . count($files) . " files:\n";
         foreach ($files as $file) {
             echo "  - " . $file['name'] . " (" . $file['size'] . " bytes)\n";
         }
     } catch (Exception $e) {
         echo "❌ File listing failed: " . $e->getMessage() . "\n";
+    }
+    
+    echo "\n📋 Testing nested file listing...\n";
+    try {
+        $files = $nextcloud->listFiles('nested/deep/folder');
+        echo "✅ Nested file listing successful. Found " . count($files) . " files:\n";
+        foreach ($files as $file) {
+            echo "  - " . $file['name'] . " (" . $file['size'] . " bytes)\n";
+        }
+    } catch (Exception $e) {
+        echo "❌ Nested file listing failed: " . $e->getMessage() . "\n";
+    }
+    
+    echo "\n🗑️  Testing file deletion...\n";
+    try {
+        $result = $nextcloud->deleteFile('test-folder/chefos-test.txt');
+        if ($result) {
+            echo "✅ File deleted successfully!\n";
+        } else {
+            echo "⚠️  File deletion failed\n";
+        }
+    } catch (Exception $e) {
+        echo "❌ File deletion failed: " . $e->getMessage() . "\n";
     }
     
     echo "\n🎉 Nextcloud integration test completed!\n";

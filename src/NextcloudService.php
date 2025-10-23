@@ -24,9 +24,6 @@ class NextcloudService {
         
         // Ensure URL ends with /
         $this->url = rtrim($this->url, '/') . '/';
-        
-        // Ensure base folder exists
-        $this->ensureFolder($this->baseFolder);
     }
     
     /**
@@ -62,11 +59,47 @@ class NextcloudService {
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
             
-            // If directory doesn't exist (404), create it
+            // If directory doesn't exist (404), create it directly without recursion
             if ($httpCode == 404) {
-                $this->createDirectory($currentPath);
+                $this->createDirectoryDirect($currentPath);
             }
         }
+    }
+    
+    /**
+     * Create directory directly without checking parent directories (to avoid recursion)
+     */
+    private function createDirectoryDirect($remotePath) {
+        $encodedUsername = rawurlencode($this->username);
+        $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $encodedUsername . $remotePath;
+        
+        $headers = [
+            'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password)
+        ];
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'MKCOL');
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        
+        if ($error) {
+            throw new Exception("Failed to create directory in Nextcloud: " . $error);
+        }
+        
+        if ($httpCode !== 201 && $httpCode !== 405) { // 405 = already exists
+            throw new Exception("Failed to create directory in Nextcloud: HTTP " . $httpCode);
+        }
+        
+        return true;
     }
 
     /**
