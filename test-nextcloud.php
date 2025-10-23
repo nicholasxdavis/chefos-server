@@ -6,18 +6,19 @@ header('Content-Type: text/plain');
 echo "ChefOS Nextcloud Integration Test\n";
 echo "=================================\n\n";
 
+// Load Composer autoloader
+require __DIR__ . '/vendor/autoload.php';
+
+// Load environment variables
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->safeLoad();
+
+// Direct require for NextcloudService
+require __DIR__ . '/src/NextcloudService.php';
+
+use ChefOS\Storage\NextcloudService;
+
 try {
-    // Load Composer autoloader
-    require __DIR__ . '/vendor/autoload.php';
-    
-    // Load environment variables
-    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-    $dotenv->safeLoad();
-    
-    // Direct require for NextcloudService
-    require __DIR__ . '/src/NextcloudService.php';
-    
-    use ChefOS\Storage\NextcloudService;
     
     echo "🔗 Testing Nextcloud connection...\n";
     echo "URL: " . getenv('NEXTCLOUD_URL') . "\n";
