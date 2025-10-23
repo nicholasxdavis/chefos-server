@@ -15,6 +15,9 @@ try {
     $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
     $dotenv->safeLoad();
     
+    // Direct require for Database class to ensure it's loaded
+    require __DIR__ . '/src/Database.php';
+    
     use ChefOS\Database\Database;
     
     echo "🔌 Testing database connection...\n";

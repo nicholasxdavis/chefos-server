@@ -12,6 +12,9 @@ $dotenv = Dotenv\Dotenv::createImmutable($baseDir);
 // Suppress warnings if .env file is missing, relying on Coolify env vars
 $dotenv->safeLoad();
 
+// Direct require for Database class to ensure it's loaded
+require $baseDir . '/src/Database.php';
+
 use ChefOS\Database\Database;
 
 header('Content-Type: text/plain');
