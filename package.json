@@ -10,8 +10,7 @@
     "package": "electron-packager . ChefOS --platform=win32 --arch=x64 --out=dist/ --overwrite --icon=./ui/img/logo.ico"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.0",
-    "zustand": "^4.4.7"
+    "electron-squirrel-startup": "^1.0.0"
   },
   "devDependencies": {
     "electron": "^29.1.5",

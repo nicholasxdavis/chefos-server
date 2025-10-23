@@ -8,7 +8,7 @@ Your ChefOS backend is now ready! Here's what has been set up:
 
 1. **MariaDB Database Connection** - Using your Coolify environment variables
 2. **REST API Endpoints** - Complete CRUD operations for all features
-3. **Zustand State Management** - Modern state management for your frontend
+3. **Vanilla JavaScript State Management** - Simple, lightweight state management for your frontend
 4. **Database Schema** - All tables ready for your ChefOS features
 
 ### 🔧 Environment Variables (Already Set in Coolify)
@@ -100,7 +100,7 @@ All endpoints are available at `/api/`:
 
 ### 🎯 Using the API in Your Frontend
 
-The API integration script (`js/api-integration.js`) provides a global `ChefOSAPI` object:
+The API integration script (`js/api-integration.js`) provides a global `ChefOSAPI` object, and the state management is available as `window.ChefOSStore`:
 
 ```javascript
 // Test connection
@@ -124,6 +124,16 @@ await ChefOSAPI.updateRecipe(recipeId, updatedData);
 
 // Delete a recipe
 await ChefOSAPI.deleteRecipe(recipeId);
+
+// Using the state store
+const store = window.ChefOSStore;
+store.setRecipes(recipes.recipes);
+store.addRecipe(newRecipe);
+
+// Subscribe to state changes
+store.subscribe((state) => {
+    console.log('State updated:', state);
+});
 ```
 
 ### 🔒 Security Notes

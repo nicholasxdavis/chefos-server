@@ -1,8 +1,8 @@
 // API Integration Helper for ChefOS
 // This file helps integrate your existing JavaScript with the new backend API
 
-// Import Zustand stores (you'll need to add this to your HTML)
-// <script type="module" src="js/store.js"></script>
+// Uses the vanilla JavaScript ChefOSStore (no imports needed)
+// The store is available globally as window.ChefOSStore
 
 // API Integration Class
 class ChefOSAPI {
