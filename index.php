@@ -44,7 +44,30 @@ if (preg_match($staticFilePattern, $requestUri)) {
     }
 }
 
-// --- STEP 2: SPA Entry Point (Fallback for all non-static requests) ---
+// --- STEP 2: API Route Handling ---
+// Check if this is an API request
+if (strpos($requestUri, '/api/') === 0) {
+    // Load Composer autoloader
+    if (file_exists($baseDir . '/vendor/autoload.php')) {
+        require $baseDir . '/vendor/autoload.php';
+        
+        // Load environment variables
+        if (class_exists('Dotenv\Dotenv')) {
+            try {
+                $dotenv = Dotenv\Dotenv::createImmutable($baseDir);
+                $dotenv->safeLoad();
+            } catch (Exception $e) {
+                // Ignore dotenv errors in production
+            }
+        }
+    }
+    
+    // Handle API request
+    include $baseDir . '/api/index.php';
+    exit;
+}
+
+// --- STEP 3: SPA Entry Point (Fallback for all non-static requests) ---
 
 // Load Composer autoloader if it exists (optional for basic deployment)
 if (file_exists($baseDir . '/vendor/autoload.php')) {
