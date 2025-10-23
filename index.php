@@ -44,7 +44,42 @@ if (preg_match($staticFilePattern, $requestUri)) {
     }
 }
 
-// --- STEP 2: API Route Handling ---
+// --- STEP 2: PHP File Handling ---
+// Check if this is a direct PHP file request
+if (preg_match('/\.php$/', $requestUri)) {
+    $phpFilePath = $baseDir . $requestUri;
+    
+    
+    if (file_exists($phpFilePath)) {
+        // Load Composer autoloader
+        if (file_exists($baseDir . '/vendor/autoload.php')) {
+            require $baseDir . '/vendor/autoload.php';
+            
+            // Load environment variables
+            if (class_exists('Dotenv\Dotenv')) {
+                try {
+                    $dotenv = Dotenv\Dotenv::createImmutable($baseDir);
+                    $dotenv->safeLoad();
+                } catch (Exception $e) {
+                    // Ignore dotenv errors in production
+                }
+            }
+        }
+        
+        // Include the PHP file
+        include $phpFilePath;
+        exit;
+    } else {
+        // If PHP file doesn't exist, return 404
+        http_response_code(404);
+        echo "<h1>404 - PHP File Not Found</h1>";
+        echo "<p>Requested file: " . htmlspecialchars($requestUri) . "</p>";
+        echo "<p>Full path: " . htmlspecialchars($phpFilePath) . "</p>";
+        exit;
+    }
+}
+
+// --- STEP 3: API Route Handling ---
 // Check if this is an API request
 if (strpos($requestUri, '/api/') === 0) {
     // Load Composer autoloader
@@ -67,7 +102,7 @@ if (strpos($requestUri, '/api/') === 0) {
     exit;
 }
 
-// --- STEP 3: SPA Entry Point (Fallback for all non-static requests) ---
+// --- STEP 4: SPA Entry Point (Fallback for all non-static requests) ---
 
 // Load Composer autoloader if it exists (optional for basic deployment)
 if (file_exists($baseDir . '/vendor/autoload.php')) {

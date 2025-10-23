@@ -36,24 +36,22 @@ try {
     
     // Route the request
     $routes = [
-        'auth/login' => 'auth/login.php',
-        'auth/register' => 'auth/register.php',
-        'recipes' => 'recipes/index.php',
-        'menus' => 'menus/index.php',
-        'stores' => 'stores/index.php',
-        'shopping-list' => 'shopping/index.php',
-        'calendar' => 'calendar/index.php',
-        'custom-densities' => 'densities/index.php',
+        '/auth/login' => 'auth/login.php',
+        '/auth/register' => 'auth/register.php',
+        '/recipes' => 'recipes/index.php',
+        '/menus' => 'menus/index.php',
+        '/stores' => 'stores/index.php',
+        '/shopping-list' => 'shopping/index.php',
+        '/calendar' => 'calendar/index.php',
+        '/custom-densities' => 'densities/index.php',
     ];
     
-    // Handle dynamic routes with IDs
-    foreach ($routes as $pattern => $file) {
-        if (preg_match('/^' . str_replace('/', '\/', $pattern) . '(\/\d+)?$/', $path)) {
-            $apiFile = $baseDir . '/api/' . $file;
-            if (file_exists($apiFile)) {
-                include $apiFile;
-                exit;
-            }
+    // Handle exact route matches
+    if (isset($routes[$path])) {
+        $apiFile = $baseDir . '/api/' . $routes[$path];
+        if (file_exists($apiFile)) {
+            include $apiFile;
+            exit;
         }
     }
     
