@@ -1,0 +1,19 @@
+{
+  "name": "chefos",
+  "version": "1.0.0",
+  "description": "Professional Kitchen Management System",
+  "main": "main.js",
+  "author": "NicholasXDavis",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-packager . ChefOS --platform=win32 --arch=x64 --out=dist/ --overwrite --icon=./ui/img/logo.ico"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.0"
+  },
+  "devDependencies": {
+    "electron": "^29.1.5",
+    "electron-packager": "^17.1.2"
+  }
+}
