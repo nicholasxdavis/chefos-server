@@ -23,7 +23,9 @@ try {
     echo "🔗 Testing Nextcloud connection...\n";
     echo "URL: " . getenv('NEXTCLOUD_URL') . "\n";
     echo "Username: " . getenv('NEXTCLOUD_USERNAME') . "\n";
-    echo "Storage Driver: " . getenv('STORAGE_DRIVER') . "\n\n";
+    echo "Password: " . (getenv('NEXTCLOUD_PASSWORD') ? 'SET' : 'NOT SET') . "\n";
+    echo "Storage Driver: " . getenv('STORAGE_DRIVER') . "\n";
+    echo "Base Folder: " . (getenv('NEXTCLOUD_BASE_FOLDER') ?: '/ChefOS') . "\n\n";
     
     if (getenv('STORAGE_DRIVER') !== 'nextcloud') {
         echo "⚠️  Storage driver is not set to 'nextcloud'. Current: " . getenv('STORAGE_DRIVER') . "\n";
@@ -32,7 +34,34 @@ try {
     }
     
     $nextcloud = new NextcloudService();
-    echo "✅ Nextcloud service initialized successfully!\n\n";
+    echo "✅ Nextcloud service initialized successfully!\n";
+    
+    // Test basic connection
+    echo "\n🔍 Testing basic connection...\n";
+    $testUrl = getenv('NEXTCLOUD_URL') . '/remote.php/dav/files/' . getenv('NEXTCLOUD_USERNAME') . '/';
+    echo "Testing URL: " . $testUrl . "\n";
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $testUrl);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Basic ' . base64_encode(getenv('NEXTCLOUD_USERNAME') . ':' . getenv('NEXTCLOUD_PASSWORD'))
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+    
+    if ($error) {
+        echo "❌ Connection error: " . $error . "\n";
+    } else {
+        echo "✅ Connection successful! HTTP Code: " . $httpCode . "\n";
+    }
+    echo "\n";
     
     echo "📁 Testing directory creation...\n";
     try {
