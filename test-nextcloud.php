@@ -73,6 +73,14 @@ try {
         echo "⚠️  Directory creation failed: " . $e->getMessage() . "\n";
     }
     
+    echo "📁 Testing nested directory creation...\n";
+    try {
+        $nextcloud->createDirectory('nested/deep/folder');
+        echo "✅ Nested directory created successfully.\n";
+    } catch (Exception $e) {
+        echo "⚠️  Nested directory creation failed: " . $e->getMessage() . "\n";
+    }
+    
     echo "\n📄 Testing file upload...\n";
     try {
         $testContent = "ChefOS Test File - " . date('Y-m-d H:i:s');

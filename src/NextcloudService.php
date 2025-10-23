@@ -24,12 +24,61 @@ class NextcloudService {
         
         // Ensure URL ends with /
         $this->url = rtrim($this->url, '/') . '/';
+        
+        // Ensure base folder exists
+        $this->ensureFolder($this->baseFolder);
     }
     
+    /**
+     * Ensure that a folder path exists, creating parent directories as needed
+     */
+    private function ensureFolder($path) {
+        // Remove leading slash and split path into parts
+        $path = ltrim($path, '/');
+        $parts = explode('/', $path);
+        
+        $currentPath = '';
+        foreach ($parts as $part) {
+            if (empty($part)) continue;
+            
+            $currentPath .= '/' . $part;
+            
+            // Check if this directory exists by trying to list it
+            $encodedUsername = rawurlencode($this->username);
+            $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $encodedUsername . $currentPath;
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password)
+            ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_NOBODY, true); // HEAD request only
+            
+            curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            // If directory doesn't exist (404), create it
+            if ($httpCode == 404) {
+                $this->createDirectory($currentPath);
+            }
+        }
+    }
+
     /**
      * Upload a file to Nextcloud
      */
     public function uploadFile($localFilePath, $remotePath, $content = null) {
+        // Ensure the folder path exists before uploading
+        $folderPath = dirname($remotePath);
+        if ($folderPath !== '.') {
+            $this->ensureFolder($this->baseFolder . '/' . $folderPath);
+        }
+        
         $remotePath = $this->baseFolder . '/' . ltrim($remotePath, '/');
         $encodedUsername = rawurlencode($this->username);
         $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $encodedUsername . $remotePath;
@@ -190,6 +239,12 @@ class NextcloudService {
      * Create a directory
      */
     public function createDirectory($remotePath) {
+        // Ensure parent directories exist first
+        $parentPath = dirname($remotePath);
+        if ($parentPath !== '.' && $parentPath !== '/') {
+            $this->ensureFolder($this->baseFolder . '/' . $parentPath);
+        }
+        
         $remotePath = $this->baseFolder . '/' . ltrim($remotePath, '/');
         $encodedUsername = rawurlencode($this->username);
         $url = $this->url . ltrim($this->webdavPath, '/') . '/' . $encodedUsername . $remotePath;
