@@ -1,0 +1,16 @@
+providers = ["php"]
+
+[phases.setup]
+nixPkgs = ["php82", "php82Packages.composer"]
+
+[phases.install]
+cmds = ["composer install --no-dev --optimize-autoloader"]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "php -S 0.0.0.0:$PORT index.php"
+
+[variables]
+NIXPACKS_PHP_ROOT_DIR = "/app"
