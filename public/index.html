@@ -1,0 +1,2690 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="forest">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChefOS - Professional Kitchen Management</title>
+
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <link id="favicon" rel="icon" href="ui/img/logo.png" type="image/png">
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="ui/img/logo.png">
+
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" as="style">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.11.1/dist/full.min.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <link rel="stylesheet" href="styles.css">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen antialiased">
+    <script>
+        // Immediately hide everything until authenticated (runs before anything renders)
+        (function() {
+            const isAuthenticated = localStorage.getItem('chefos_authenticated') === 'true';
+            const hasVisitedBefore = localStorage.getItem('chefos_has_visited') === 'true';
+            const pinProtectionEntryEnabled = localStorage.getItem('pinProtectionEntryEnabled') === 'true';
+            const storedPIN = localStorage.getItem('storedPIN');
+            
+            // Determine if this is first visit
+            window.isFirstVisit = !hasVisitedBefore;
+            
+            // Hide content if not authenticated OR if PIN protection is enabled
+            if (!isAuthenticated || (pinProtectionEntryEnabled && storedPIN)) {
+                // Inject style to hide everything immediately
+                const style = document.createElement('style');
+                style.id = 'auth-hide-style';
+                style.textContent = `
+                    #shimmer-loader,
+                    #app-container {
+                        display: none !important;
+                        visibility: hidden !important;
+                        opacity: 0 !important;
+                    }
+                    ${window.isFirstVisit ? '#create-account-modal' : '#auth-modal'} {
+                        display: flex !important;
+                    }
+                `;
+                document.head.appendChild(style);
+                window.needsAuthentication = !isAuthenticated;
+                window.needsPinOnEntry = (pinProtectionEntryEnabled && storedPIN);
+            } else {
+                window.needsAuthentication = false;
+                window.needsPinOnEntry = false;
+            }
+            
+            // Mark as visited for future visits
+            if (!hasVisitedBefore) {
+                localStorage.setItem('chefos_has_visited', 'true');
+            }
+        })();
+    </script>
+
+    <!-- Language Selector Modal -->
+    <div id="lang-select-modal" class="modal-container" style="display: none; background-color: rgba(0, 0, 0, 0.95); backdrop-filter: blur(20px); z-index: 100000;">
+        <div class="modal-content max-w-2xl">
+            <div class="text-center mb-8">
+                <div id="lang-logo-container" class="mx-auto mb-6" style="width: 120px; height: 120px;"></div>
+                <h2 class="text-3xl font-bold mb-2" style="color: #1a1a1a;" data-i18n="lang_select_title">Welcome to ChefOS!</h2>
+                <p class="text-lg" style="color: #1a1a1a;" data-i18n="lang_select_subtitle">Choose Your Language</p>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                <button class="lang-option" data-lang="en">
+                    <div class="lang-flag">🇺🇸</div>
+                    <span class="lang-name" data-i18n="lang_english">English</span>
+                    <div class="lang-checkmark">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                </button>
+                
+                <button class="lang-option" data-lang="zh">
+                    <div class="lang-flag">🇨🇳</div>
+                    <span class="lang-name" data-i18n="lang_chinese">中文 (Chinese)</span>
+                    <div class="lang-checkmark">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                </button>
+                
+                <button class="lang-option" data-lang="hi">
+                    <div class="lang-flag">🇮🇳</div>
+                    <span class="lang-name" data-i18n="lang_hindi">हिन्दी (Hindi)</span>
+                    <div class="lang-checkmark">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                </button>
+                
+                <button class="lang-option" data-lang="es">
+                    <div class="lang-flag">🇪🇸</div>
+                    <span class="lang-name" data-i18n="lang_spanish">Español (Spanish)</span>
+                    <div class="lang-checkmark">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                </button>
+                
+                <button class="lang-option" data-lang="fr">
+                    <div class="lang-flag">🇫🇷</div>
+                    <span class="lang-name" data-i18n="lang_french">Français (French)</span>
+                    <div class="lang-checkmark">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                </button>
+                
+                <button class="lang-option" data-lang="ar">
+                    <div class="lang-flag">🇸🇦</div>
+                    <span class="lang-name" data-i18n="lang_arabic">العربية (Arabic)</span>
+                    <div class="lang-checkmark">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                </button>
+                
+                <button class="lang-option" data-lang="bn">
+                    <div class="lang-flag">🇧🇩</div>
+                    <span class="lang-name" data-i18n="lang_bengali">বাংলা (Bengali)</span>
+                    <div class="lang-checkmark">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                </button>
+            </div>
+            
+            <button id="lang-continue-btn" class="btn btn-primary btn-lg w-full" disabled>
+                <span data-i18n="lang_select_continue">Continue</span>
+                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div id="shimmer-loader" class="shimmer-wrapper" style="display: flex;">
+        <img id="shimmer-logo-img" src="ui/img/logo.png" alt="ChefOS" class="shimmer-logo">
+        <div class="shimmer-bar"></div>
+    </div>
+
+    <svg class="hidden" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <symbol id="icon-ruler" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3v18h18M3 7h18M3 11h18M3 15h18M3 19h18"/>
+            </symbol>
+            <symbol id="icon-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </symbol>
+            <symbol id="icon-calculator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="4" y="2" width="16" height="20" rx="2"/>
+                <path d="M8 6h8M8 10h8M8 14h4M8 18h4"/>
+            </symbol>
+            <symbol id="icon-kitchen-calc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 8l8 8M16 8l-8 8" opacity="0.3"/>
+            </symbol>
+            <symbol id="icon-pdf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14,2 14,8 20,8"/>
+                <text x="7" y="16" font-size="6" font-weight="bold" fill="currentColor">PDF</text>
+            </symbol>
+            <symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </symbol>
+            <symbol id="icon-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </symbol>
+            <symbol id="icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <circle cx="12" cy="16" r="1"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </symbol>
+            <symbol id="icon-unlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <circle cx="12" cy="16" r="1"/>
+                <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+            </symbol>
+            <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </symbol>
+            <symbol id="icon-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+            </symbol>
+            <symbol id="icon-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"/>
+                <circle cx="6" cy="12" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </symbol>
+            <symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M9 12l2 2 4-4"/>
+            </symbol>
+            <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 16v-4"/>
+                <path d="M12 8h.01"/>
+            </symbol>
+            <symbol id="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+            </symbol>
+            <symbol id="icon-print" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6,9 6,2 18,2 18,9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+            </symbol>
+            <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7,10 12,15 17,10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </symbol>
+            <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17,8 12,3 7,8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+            </symbol>
+            <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </symbol>
+            <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3,6 5,6 21,6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </symbol>
+            <symbol id="icon-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+            </symbol>
+            <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </symbol>
+            <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20,6 9,17 4,12"/>
+            </symbol>
+            <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </symbol>
+            <symbol id="icon-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21,15 16,10 5,21"/>
+            </symbol>
+            <symbol id="icon-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="9" cy="21" r="1"/>
+                <circle cx="20" cy="21" r="1"/>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </symbol>
+            <symbol id="icon-store" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9,22 9,12 15,12 15,22"/>
+            </symbol>
+            <symbol id="icon-calculator-alt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="4" y="2" width="16" height="20" rx="2"/>
+                <line x1="8" y1="6" x2="16" y2="6"/>
+                <circle cx="8" cy="10" r="0.5" fill="currentColor"/>
+                <circle cx="12" cy="10" r="0.5" fill="currentColor"/>
+                <circle cx="16" cy="10" r="0.5" fill="currentColor"/>
+                <circle cx="8" cy="14" r="0.5" fill="currentColor"/>
+                <circle cx="12" cy="14" r="0.5" fill="currentColor"/>
+                <circle cx="16" cy="14" r="0.5" fill="currentColor"/>
+                <circle cx="8" cy="18" r="0.5" fill="currentColor"/>
+                <circle cx="12" cy="18" r="0.5" fill="currentColor"/>
+                <circle cx="16" cy="18" r="0.5" fill="currentColor"/>
+            </symbol>
+        </defs>
+    </svg>
+
+    <div id="app-container" class="flex min-h-screen">
+        <aside class="bg-base-200 border-r border-base-300 flex-col hidden lg:flex">
+            <div class="bg-base-100 border-b border-base-300 p-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <img id="desktop-sidebar-logo" src="ui/img/logo.png" alt="ChefOS" class="w-12 h-12">
+                    <div class="logo-text">
+                        <h1 class="text-xl font-bold text-primary">ChefOS</h1>
+                        <p class="text-sm opacity-70">Professional Edition</p>
+                    </div>
+                </div>
+            </div>
+
+            <button id="sidebar-toggle" class="p-3 border-b border-base-300 hover:bg-base-300 transition-colors flex items-center justify-center space-x-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+                <span class="sidebar-label" data-i18n="nav_collapse">Collapse</span>
+            </button>
+
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <div class="nav-group">
+                    <div class="nav-parent p-3 rounded-lg flex items-center space-x-4" data-group="recipes-group">
+                        <svg class="w-6 h-6 text-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-book"></use>
+                        </svg>
+                        <span class="sidebar-label flex-1" data-i18n="nav_my_recipes">My Recipes</span>
+                        <svg id="recipes-lock-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-lock"></use>
+                        </svg>
+                        <svg class="w-4 h-4 nav-arrow transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div class="nav-sub-items ml-6 space-y-1 hidden">
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="recipes">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-book"></use>
+                            </svg>
+                            <span class="sidebar-label text-sm" data-i18n="nav_my_recipes">My Recipes</span>
+                        </div>
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="scaler">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-calculator"></use>
+                            </svg>
+                            <span class="sidebar-label text-sm">Recipe Scaler</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav-group">
+                    <div class="nav-parent p-3 rounded-lg flex items-center space-x-4" data-group="menus-group">
+                        <svg class="w-6 h-6 text-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-clipboard"></use>
+                        </svg>
+                        <span class="sidebar-label flex-1" data-i18n="nav_my_menus">My Menus</span>
+                        <svg id="menus-lock-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-lock"></use>
+                        </svg>
+                        <svg class="w-4 h-4 nav-arrow transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div class="nav-sub-items ml-6 space-y-1 hidden">
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="menus">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-clipboard"></use>
+                            </svg>
+                            <span class="sidebar-label text-sm" data-i18n="nav_my_menus">My Menus</span>
+                        </div>
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="pdf-management">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-pdf"></use>
+                            </svg>
+                            <span class="sidebar-label text-sm" data-i18n="nav_pdf_management">PDF Management</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav-group">
+                    <div class="nav-parent p-3 rounded-lg flex items-center space-x-4" data-group="shopping-group">
+                        <svg class="w-6 h-6 text-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-cart"></use>
+                        </svg>
+                        <span class="sidebar-label flex-1">My Shopping</span>
+                        <svg id="shopping-lock-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-lock"></use>
+                        </svg>
+                        <svg class="w-4 h-4 nav-arrow transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div class="nav-sub-items ml-6 space-y-1 hidden">
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="shopping">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-cart"></use>
+                            </svg>
+                            <span class="sidebar-label text-sm" data-i18n="nav_my_shopping">My Shopping List</span>
+                        </div>
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="saved-stores">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-store"></use>
+                            </svg>
+                            <span class="sidebar-label text-sm" data-i18n="nav_my_markets">My Markets</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-item p-3 rounded-lg flex items-center space-x-4" data-page="calendar">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <span class="sidebar-label" data-i18n="nav_my_calendar">My Calendar</span>
+                    <span class="badge badge-theme-accent badge-sm sidebar-label ml-auto pro-badge" data-i18n="pro_badge">PRO</span>
+                </div>
+                <div class="nav-item p-3 rounded-lg flex items-center space-x-4" data-page="calculator">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-calculator-alt"></use>
+                    </svg>
+                    <span class="sidebar-label" data-i18n="nav_calculator">Kitchen Calc</span>
+                    <span class="badge badge-theme-accent badge-sm sidebar-label ml-auto pro-badge" data-i18n="pro_badge">PRO</span>
+                </div>
+                <div class="nav-item p-3 rounded-lg flex items-center space-x-4" data-page="settings">
+                    <svg class="w-6 h-6 text-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-settings"></use>
+                    </svg>
+                    <span class="sidebar-label" data-i18n="nav_settings">Settings</span>
+                </div>
+                <div class="nav-item p-3 rounded-lg flex items-center space-x-4" data-page="billing">
+                    <svg class="w-6 h-6 text-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                    </svg>
+                    <span class="sidebar-label" data-i18n="nav_billing">Billing</span>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-base-300 bg-base-100 sidebar-footer">
+                <button id="signout-btn" class="btn btn-outline btn-sm w-full mb-3">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    <span data-i18n="nav_signout">Sign Out</span>
+                </button>
+                <div class="text-center text-sm text-base-content/70">
+                    <p class="font-medium">ChefOS</p>
+                    <p class="text-xs opacity-60">Professional Edition</p>
+                </div>
+            </div>
+        </aside>
+
+        <main id="main-content" class="flex-1 flex flex-col">
+            <header class="bg-base-100 border-b border-base-300 p-4 flex items-center justify-between lg:hidden">
+                <div class="flex items-center space-x-3">
+                    <img id="mobile-header-logo" src="ui/img/logo.png" alt="ChefOS" class="w-10 h-10">
+                    <h1 class="text-lg font-bold text-primary mr-[-12px]">ChefOS</h1>
+                </div>
+                <button class="nav-item btn btn-ghost btn-sm btn-circle" data-page="settings">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-settings"></use>
+                    </svg>
+                </button>
+            </header>
+            
+            <div class="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto pb-20 lg:pb-6">
+                <section id="scaler-page" class="page active">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h2 class="card-title" data-i18n="scaler_title">Recipe Scaler</h2>
+                                <p class="text-sm opacity-70" data-i18n="scaler_subtitle">Professional Scaling Engine</p>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                                    <h2 class="card-title">Recipe Input</h2>
+                                    <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                                        <button id="import-recipe-btn" class="btn btn-outline btn-sm flex-1 sm:flex-initial">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-upload"></use>
+                                            </svg>
+                                            <span data-i18n="scaler_import_button">Import</span>
+                                        </button>
+                                        <button id="paste-recipe-btn" class="btn btn-outline btn-sm flex-1 sm:flex-initial">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-clipboard"></use>
+                                            </svg>
+                                            Paste
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
+                                    <div class="form-control">
+                                        <label class="label py-1">
+                                            <span class="label-text text-xs sm:text-sm" data-i18n="scaler_recipe_name">Recipe Title</span>
+                                        </label>
+                                        <input type="text" id="recipe-title" placeholder="Enter recipe title" class="input input-bordered input-sm sm:input-md">
+                                    </div>
+                                    <div class="form-control">
+                                        <label class="label py-1">
+                                            <span class="label-text text-xs sm:text-sm" data-i18n="scaler_original_yield">Original Yield</span>
+                                        </label>
+                                        <input type="number" id="original-yield" value="1" min="0.1" step="0.1" class="input input-bordered input-sm sm:input-md">
+                                    </div>
+                                    <div class="form-control">
+                                        <label class="label py-1">
+                                            <span class="label-text text-xs sm:text-sm" data-i18n="scaler_desired_yield">Desired Yield</span>
+                                        </label>
+                                        <input type="number" id="desired-yield" value="1" min="0.1" step="0.1" class="input input-bordered input-sm sm:input-md">
+                                    </div>
+                                </div>
+                                <div class="form-control">
+                                    <label class="label py-1">
+                                        <span class="label-text text-xs sm:text-sm" data-i18n="scaler_ingredients">Recipe Ingredients</span>
+                                    </label>
+                                    <textarea id="recipe-input" rows="6" class="textarea textarea-bordered text-sm sm:text-base min-h-[150px] sm:min-h-[200px]" placeholder="Enter ingredients (both formats work):&#10;2 cups flour&#10;1 cup sugar&#10;OR&#10;Flour – 2 cups&#10;Sugar – 1 cup"></textarea>
+                                </div>
+                                <div class="card-actions justify-end mt-3 sm:mt-4">
+                                    <button id="process-recipe-btn" class="btn btn-primary w-full sm:w-auto" data-i18n="scaler_scale_button">Scale Recipe</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="output-section" class="card bg-base-100 shadow-xl" style="display: none;">
+                            <div class="card-body">
+                                <div class="flex flex-col gap-3 mb-4">
+                                    <h2 class="card-title" data-i18n="scaler_output_title">Scaled Recipe</h2>
+                                    <p id="yield-summary" class="text-sm opacity-70"></p>
+                                    <div class="flex flex-wrap gap-2 w-full">
+                                        <button id="save-recipe-btn" class="btn btn-outline btn-sm flex-1">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-check"></use>
+                                            </svg>
+                                            <span data-i18n="action_save">Save</span>
+                                        </button>
+                                        <button id="download-recipe-btn" class="btn btn-outline btn-sm flex-1">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-download"></use>
+                                            </svg>
+                                            <span data-i18n="action_download">Download</span>
+                                        </button>
+                                        <button id="print-recipe-btn" class="btn btn-outline btn-sm flex-1">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-print"></use>
+                                            </svg>
+                                            Print
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="results-body" class="space-y-2"></div>
+                             </div>
+                         </div>
+                        </div>
+                    </section>
+
+                <section id="calendar-page" class="page">
+                    <div class="max-w-5xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                    <div>
+                                        <h2 class="card-title" data-i18n="calendar_title">My Calendar</h2>
+                                        <p class="text-sm opacity-70" data-i18n="calendar_subtitle">Plan Your Menu & Prep Schedule</p>
+                                    </div>
+                                    <div class="flex gap-2 flex-wrap">
+                                        <button id="calendar-today-btn" class="btn btn-outline btn-sm">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <span data-i18n="calendar_today">Today</span>
+                                        </button>
+                                        <div class="btn-group">
+                                            <button id="calendar-view-month" class="btn btn-sm btn-primary" data-i18n="calendar_month">Month</button>
+                                            <button id="calendar-view-week" class="btn btn-sm" data-i18n="calendar_week">Week</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex items-center justify-between mb-4">
+                                    <button id="calendar-prev" class="btn btn-ghost btn-sm btn-circle">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                        </svg>
+                                    </button>
+                                    <h3 class="text-xl font-bold" id="calendar-month-year">October 2025</h3>
+                                    <button id="calendar-next" class="btn btn-ghost btn-sm btn-circle">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div id="calendar-month-view">
+                                    <div class="grid grid-cols-7 gap-1 mb-2">
+                                        <div class="text-center text-sm font-semibold opacity-70 p-2">Sun</div>
+                                        <div class="text-center text-sm font-semibold opacity-70 p-2">Mon</div>
+                                        <div class="text-center text-sm font-semibold opacity-70 p-2">Tue</div>
+                                        <div class="text-center text-sm font-semibold opacity-70 p-2">Wed</div>
+                                        <div class="text-center text-sm font-semibold opacity-70 p-2">Thu</div>
+                                        <div class="text-center text-sm font-semibold opacity-70 p-2">Fri</div>
+                                        <div class="text-center text-sm font-semibold opacity-70 p-2">Sat</div>
+                                    </div>
+                                    <div id="calendar-days-grid" class="grid grid-cols-7 gap-1">
+                                        <!-- Days will be populated by JavaScript -->
+                                    </div>
+                                </div>
+
+                                <div id="calendar-week-view" style="display: none;">
+                                    <div id="calendar-week-grid" class="space-y-2">
+                                        <!-- Week view will be populated by JavaScript -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title mb-4">Quick Stats</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div class="bg-base-200 p-4 rounded-lg text-center sm:text-left">
+                                        <p class="text-sm opacity-70 mb-1">This Week</p>
+                                        <p class="text-2xl font-bold text-primary" id="calendar-stat-week">0</p>
+                                        <p class="text-xs opacity-60">planned items</p>
+                                    </div>
+                                    <div class="bg-base-200 p-4 rounded-lg text-center sm:text-left">
+                                        <p class="text-sm opacity-70 mb-1">This Month</p>
+                                        <p class="text-2xl font-bold text-primary" id="calendar-stat-month">0</p>
+                                        <p class="text-xs opacity-60">planned items</p>
+                                    </div>
+                                    <div class="bg-base-200 p-4 rounded-lg text-center sm:text-left">
+                                        <p class="text-sm opacity-70 mb-1">Upcoming</p>
+                                        <p class="text-2xl font-bold text-primary" id="calendar-stat-upcoming">0</p>
+                                        <p class="text-xs opacity-60">in next 7 days</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card bg-base-100 shadow-xl lg:hidden">
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <use href="#icon-info"></use>
+                                    </svg>
+                                    <div>
+                                        <p class="text-sm font-semibold">Tip: Tap any day to plan</p>
+                                        <p class="text-xs opacity-70">Add recipes, menus, or tasks to organize your schedule</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="calculator-page" class="page">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h2 class="card-title">Kitchen Calculator</h2>
+                                <p class="text-sm opacity-70">Quick Conversions & Math</p>
+                            </div>
+                        </div>
+                        <div id="calculator" class="card p-4 sm:p-6 space-y-4 bg-base-200 shadow-xl">
+                           <div class="bg-base-300/50 rounded-lg p-4 text-right space-y-1">
+                                <div id="calc-history-display" class="h-6 opacity-50 font-mono text-lg truncate"></div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span id="calc-memory-indicator" class="text-sm font-mono text-primary opacity-0 transition-opacity">M</span>
+                                    <input type="text" id="calc-display" readonly class="w-full bg-transparent text-4xl sm:text-5xl font-mono border-none focus:ring-0 p-0 text-right" value="0">
+                                </div>
+                           </div>
+                            <div class="grid grid-cols-6 gap-2 sm:gap-4 text-lg calculator-buttons">
+                                <button data-action="conv" title="Unit & Ingredient Converter" class="btn btn-special">conv</button>
+                                <button data-action="of" title="Ingredient Density Lookup" class="btn btn-special">of</button>
+                                <button data-mem="mc" title="Memory Clear" class="btn btn-special">MC</button>
+                                <button data-mem="mr" title="Memory Recall" class="btn btn-special">MR</button>
+                                <button data-mem="m-plus" title="Memory Add" class="btn btn-special">M+</button>
+                                <button data-action="clear" class="btn btn-primary">C</button>
+                                
+                                <button data-num="7" class="btn btn-neutral">7</button>
+                                <button data-num="8" class="btn btn-neutral">8</button>
+                                <button data-num="9" class="btn btn-neutral">9</button>
+                                <button data-op="divide" class="btn btn-operator text-2xl">÷</button>
+                                <button data-unit="cup" class="btn btn-special">cup</button>
+                                <button data-unit="tbsp" class="btn btn-special">tbsp</button>
+                                
+                                <button data-num="4" class="btn btn-neutral">4</button>
+                                <button data-num="5" class="btn btn-neutral">5</button>
+                                <button data-num="6" class="btn btn-neutral">6</button>
+                                <button data-op="multiply" class="btn btn-operator text-2xl">×</button>
+                                <button data-unit="tsp" class="btn btn-special">tsp</button>
+                                <button data-unit="ml" class="btn btn-special">ml</button>
+                                
+                                <button data-num="1" class="btn btn-neutral">1</button>
+                                <button data-num="2" class="btn btn-neutral">2</button>
+                                <button data-num="3" class="btn btn-neutral">3</button>
+                                <button data-op="subtract" class="btn btn-operator text-2xl">−</button>
+                                <button data-unit="g" class="btn btn-special">g</button>
+                                <button data-unit="oz" class="btn btn-special">oz</button>
+                                
+                                <button data-num="0" class="btn btn-neutral">0</button>
+                                <button data-num="." class="btn btn-neutral">.</button>
+                                <button data-action="equals" class="btn btn-primary text-2xl">=</button>
+                                <button data-op="add" class="btn btn-operator text-2xl">+</button>
+                                <button data-unit="lb" class="btn btn-special">lb</button>
+                                <button data-unit="kg" class="btn btn-special">kg</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="recipes-page" class="page">
+                    <div class="max-w-5xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex flex-col sm:flex-row justify-between gap-4">
+                                    <div>
+                                        <h2 class="card-title" data-i18n="recipes_title">My Recipes</h2>
+                                        <p class="text-sm opacity-70" data-i18n="recipes_subtitle">Your Saved Collection</p>
+                                    </div>
+                                    <div class="flex gap-2 flex-wrap w-full sm:w-auto">
+                                        <button id="export-recipes-btn" class="btn btn-outline btn-sm flex-1 sm:flex-initial">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-download"></use>
+                                            </svg>
+                                            <span data-i18n="recipes_export">Export All</span>
+                                        </button>
+                                        <button id="add-recipe-btn" class="btn btn-primary btn-sm flex-1 sm:flex-initial">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-plus"></use>
+                                            </svg>
+                                            <span data-i18n="recipes_add_recipe">Add Recipe</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="recipes-search-container" class="card bg-base-100 shadow-xl" style="display: none;">
+                            <div class="card-body">
+                                <div class="form-control">
+                                    <div class="relative">
+                                        <input type="text" id="recipes-search" class="input input-bordered w-full pr-10" placeholder="Search recipes by name...">
+                                        <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="recipes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                        <div id="recipes-empty-state" class="card bg-base-100 shadow-xl" style="display: none;">
+                            <div class="card-body text-center py-12">
+                                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <use href="#icon-book"></use>
+                                </svg>
+                                <h3 class="text-xl font-semibold mb-2" data-i18n="recipes_empty_title">No recipes yet</h3>
+                                <p class="text-base-content/70 mb-4" data-i18n="recipes_empty_desc">Add your recipes to your collection</p>
+                                <button id="add-recipe-btn-2" class="btn btn-primary">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <use href="#icon-plus"></use>
+                                    </svg>
+                                    <span data-i18n="recipes_add_first">Add First Recipe</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="settings-page" class="page">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl lg:hidden">
+                            <div class="card-body">
+                                <h2 class="card-title">Settings</h2>
+                                <p class="text-sm opacity-70 mb-6">Customize Your Experience</p>
+                                <h3 class="font-semibold text-lg mb-4">Account</h3>
+                                <div class="space-y-2">
+                                    <button class="btn btn-outline w-full nav-item" data-page="billing">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                        </svg>
+                                        Billing & Subscription
+                                    </button>
+                                    <button id="mobile-signout-btn" class="btn btn-outline btn-error w-full">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                        </svg>
+                                        Sign Out
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl hidden lg:block">
+                            <div class="card-body">
+                                <h2 class="card-title">Settings</h2>
+                                <p class="text-sm opacity-70">Customize Your Experience</p>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Data Storage Location</h3>
+                                <p class="text-sm opacity-70 mb-4">Choose where your ChefOS data is stored and managed.</p>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div class="storage-option" id="local-storage-option">
+                                        <input type="radio" name="storage-location" value="local" class="storage-radio" checked id="local-storage-radio">
+                                        <label for="local-storage-radio" class="storage-label">
+                                            <div class="storage-icon">
+                                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-shield"></use>
+                                                </svg>
+                                            </div>
+                                            <h4 class="storage-title">Local Device</h4>
+                                            <p class="storage-description">Private & secure on your device</p>
+                                            <div class="storage-checkmark">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-check"></use>
+                                                </svg>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div class="storage-option" id="cloud-storage-option">
+                                        <input type="radio" name="storage-location" value="cloud" class="storage-radio" id="cloud-storage-radio">
+                                        <label for="cloud-storage-radio" class="storage-label">
+                                            <div class="storage-icon">
+                                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
+                                                </svg>
+                                            </div>
+                                            <h4 class="storage-title">ChefOS Cloud</h4>
+                                            <p class="storage-description">Synced across devices</p>
+                                            <div class="storage-checkmark">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-check"></use>
+                                                </svg>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="alert alert-warning mt-4">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
+                                    <div class="storage-notice-text">
+                                        <h4 class="font-semibold text-sm">Important Data Storage Notice</h4>
+                                        <p class="text-xs">Locally stored data is tied to your browser. Clearing your browsing history, cookies, or cache may permanently delete your saved recipes and settings. We recommend regularly downloading backups using the Data Export & Backup feature below.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Data Protection</h3>
+                                <p class="text-sm opacity-70 mb-4">Protect your data with a PIN for privacy</p>
+                                <div class="space-y-3">
+                                    <div class="form-control">
+                                        <label class="cursor-pointer label">
+                                            <span class="label-text">Require PIN on App Entry</span>
+                                            <input type="checkbox" id="protect-entry-toggle" class="toggle toggle-primary">
+                                        </label>
+                                    </div>
+                                    <div class="form-control">
+                                        <label class="cursor-pointer label">
+                                            <span class="label-text">Enable PIN Protection for Recipes & Menus</span>
+                                            <input type="checkbox" id="protect-recipes-toggle" class="toggle toggle-primary">
+                                        </label>
+                                    </div>
+                                    <div class="form-control">
+                                        <label class="cursor-pointer label">
+                                            <span class="label-text">Enable PIN Protection for Shopping List</span>
+                                            <input type="checkbox" id="protect-shopping-toggle" class="toggle toggle-primary">
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="pin-remember-container" class="mt-4" style="display: none;">
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text">Remember PIN for</span>
+                                        </label>
+                                        <div class="flex gap-2 items-center">
+                                            <input type="number" id="pin-remember-minutes" class="input input-bordered input-sm w-24" value="15" min="1" max="120" step="1">
+                                            <span class="text-sm">minutes</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="change-pin-container" class="mt-4" style="display: none;">
+                                    <button id="change-pin-btn" class="btn btn-outline btn-sm">Change PIN</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Calculator Ingredients</h3>
+                                <p class="text-sm opacity-70 mb-4">Manage custom ingredient densities for accurate conversions</p>
+                                <button id="manage-densities-btn" class="btn btn-primary btn-sm">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <use href="#icon-settings"></use>
+                                    </svg>
+                                    Manage Ingredient Densities
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Data Export & Backup</h3>
+                                <p class="text-sm opacity-70 mb-4">Download a complete copy of your ChefOS data for safekeeping or transfer.</p>
+                                <div class="space-y-4">
+                                    <div class="bg-base-200 rounded-lg p-4">
+                                        <div class="flex items-start gap-3 mb-3">
+                                            <svg class="w-5 h-5 text-primary mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-download"></use>
+                                            </svg>
+                                            <div class="flex-1">
+                                                <h4 class="font-semibold mb-1">Download My Data</h4>
+                                                <span class="badge badge-theme-accent badge-sm mb-2">Available Now</span>
+                                                <p class="text-xs opacity-70">Export all your recipes, menus, shopping lists, and preferences as a secure backup file. Ideal for local storage, migration, or offline record-keeping.</p>
+                                            </div>
+                                        </div>
+                                        <button id="download-all-data-btn" class="btn btn-primary btn-sm w-full">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-download"></use>
+                                            </svg>
+                                            Download Complete Backup
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Language</h3>
+                                <p class="text-sm opacity-70 mb-4">Change your preferred language</p>
+                                <div class="custom-dropdown" id="language-dropdown">
+                                    <button class="custom-dropdown-button" id="language-dropdown-button">
+                                        <div class="flex items-center gap-3 flex-1">
+                                            <span class="text-2xl" id="selected-lang-flag">🇺🇸</span>
+                                            <span id="selected-lang-name">English</span>
+                                        </div>
+                                        <svg class="w-5 h-5 transition-transform" id="language-dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </button>
+                                    <div class="custom-dropdown-menu" id="language-dropdown-menu">
+                                        <div class="custom-dropdown-item" data-lang="en" data-flag="🇺🇸">
+                                            <span>English</span>
+                                            <span class="text-xl">🇺🇸</span>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-lang="zh" data-flag="🇨🇳">
+                                            <span>中文</span>
+                                            <span class="text-xl">🇨🇳</span>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-lang="hi" data-flag="🇮🇳">
+                                            <span>हिन्दी</span>
+                                            <span class="text-xl">🇮🇳</span>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-lang="es" data-flag="🇪🇸">
+                                            <span>Español</span>
+                                            <span class="text-xl">🇪🇸</span>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-lang="fr" data-flag="🇫🇷">
+                                            <span>Français</span>
+                                            <span class="text-xl">🇫🇷</span>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-lang="ar" data-flag="🇸🇦">
+                                            <span>العربية</span>
+                                            <span class="text-xl">🇸🇦</span>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-lang="bn" data-flag="🇧🇩">
+                                            <span>বাংলা</span>
+                                            <span class="text-xl">🇧🇩</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Display Mode</h3>
+                                <p class="text-sm opacity-70 mb-4">Choose between light and dark mode</p>
+                                <div class="form-control">
+                                    <label class="cursor-pointer label">
+                                        <span class="label-text">Enable Dark Mode</span>
+                                        <input type="checkbox" id="dark-mode-toggle" class="toggle toggle-primary">
+                                    </label>
+                                </div>
+                                <div class="divider my-3"></div>
+                                <div class="form-control">
+                                    <label class="cursor-pointer label">
+                                        <span class="label-text">Show PRO Badges in Sidebar</span>
+                                        <input type="checkbox" id="show-pro-badges-toggle" class="toggle toggle-primary" checked>
+                                    </label>
+                                    <p class="text-xs opacity-60 mt-2">Hide or show the PRO badges next to premium features (appearance only)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Font Family</h3>
+                                <p class="text-sm opacity-70 mb-4">Choose your preferred font for the interface</p>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <label class="font-option cursor-pointer" data-font="manrope">
+                                        <input type="radio" name="font-family" value="manrope" class="font-radio" checked>
+                                        <div class="font-preview">
+                                            <p style="font-family: 'Manrope', sans-serif;">Manrope</p>
+                                            <span class="font-sample" style="font-family: 'Manrope', sans-serif;">Aa</span>
+                                        </div>
+                                    </label>
+                                    <label class="font-option cursor-pointer" data-font="inter">
+                                        <input type="radio" name="font-family" value="inter" class="font-radio">
+                                        <div class="font-preview">
+                                            <p style="font-family: 'Inter', sans-serif;">Inter</p>
+                                            <span class="font-sample" style="font-family: 'Inter', sans-serif;">Aa</span>
+                                        </div>
+                                    </label>
+                                    <label class="font-option cursor-pointer" data-font="system">
+                                        <input type="radio" name="font-family" value="system" class="font-radio">
+                                        <div class="font-preview">
+                                            <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">System</p>
+                                            <span class="font-sample" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">Aa</span>
+                                        </div>
+                                    </label>
+                                    <label class="font-option cursor-pointer" data-font="poppins">
+                                        <input type="radio" name="font-family" value="poppins" class="font-radio">
+                                        <div class="font-preview">
+                                            <p style="font-family: 'Poppins', sans-serif;">Poppins</p>
+                                            <span class="font-sample" style="font-family: 'Poppins', sans-serif;">Aa</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="card-title">Theme Selection</h3>
+                                    <svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                                    </svg>
+                                </div>
+                                <p class="text-sm opacity-70 mb-4">Choose your preferred color theme</p>
+                                
+                                <div class="custom-dropdown" id="theme-dropdown">
+                                    <button class="custom-dropdown-button" id="theme-dropdown-button">
+                                        <div class="flex items-center gap-3 flex-1">
+                                            <div class="theme-ribbon" id="selected-theme-ribbon"></div>
+                                            <span id="selected-theme-name">Forest</span>
+                                        </div>
+                                        <svg class="w-5 h-5 transition-transform" id="theme-dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </button>
+                                    <div class="custom-dropdown-menu" id="theme-dropdown-menu">
+                                        <div class="custom-dropdown-item" data-theme="forest">
+                                            <span>Forest</span>
+                                            <div class="theme-ribbon bg-gradient-to-r from-green-600 to-green-800"></div>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-theme="ocean">
+                                            <span>Ocean</span>
+                                            <div class="theme-ribbon bg-gradient-to-r from-blue-600 to-blue-800"></div>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-theme="sunset">
+                                            <span>Sunset</span>
+                                            <div class="theme-ribbon bg-gradient-to-r from-orange-600 to-red-700"></div>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-theme="midnight">
+                                            <span>Midnight</span>
+                                            <div class="theme-ribbon bg-gradient-to-r from-purple-600 to-indigo-800"></div>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-theme="light">
+                                            <span>Light</span>
+                                            <div class="theme-ribbon bg-gradient-to-r from-indigo-400 to-blue-500"></div>
+                                        </div>
+                                        <div class="custom-dropdown-item" data-theme="rose">
+                                            <span>Rose</span>
+                                            <div class="theme-ribbon bg-gradient-to-r from-pink-600 to-rose-700"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4 flex items-center gap-2 p-3 bg-base-200 rounded-lg border-l-3 border-l-primary">
+                                    <svg class="w-4 h-4 opacity-60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <p class="text-xs opacity-60">Theme colors apply across the entire application</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="billing-page" class="page">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h2 class="card-title">Billing & Subscription</h2>
+                                <p class="text-sm opacity-70">Manage Your ChefOS Subscription</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title mb-4">Current Plan</h3>
+                                <div class="bg-base-200 p-6 rounded-lg">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h4 class="text-xl font-bold text-primary" id="billing-plan-name">Professional Plan</h4>
+                                            <p class="text-sm opacity-70" id="billing-plan-description">Full access to all ChefOS features</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-3xl font-bold text-primary">$5</p>
+                                            <p class="text-sm opacity-70 mb-2">per month</p>
+                                            <div class="text-xs opacity-60 space-y-1">
+                                                <p><span class="font-semibold">Subscribed on:</span> <span id="billing-subscribe-date">--</span></p>
+                                                <p id="billing-next-bill-container"><span class="font-semibold">Next bill:</span> <span id="billing-next-bill-date">--</span></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="divider"></div>
+                                    <div class="space-y-2">
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-5 h-5 billing-checkmark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-check"></use>
+                                            </svg>
+                                            <span class="text-sm">Save up-to 10,000 Recipes</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-5 h-5 billing-checkmark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-check"></use>
+                                            </svg>
+                                            <span class="text-sm">Professional recipe scaler</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-5 h-5 billing-checkmark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-check"></use>
+                                            </svg>
+                                            <span class="text-sm">Menu management & PDF storage</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-5 h-5 billing-checkmark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-check"></use>
+                                            </svg>
+                                            <span class="text-sm">Smart shopping lists</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-5 h-5 billing-checkmark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-check"></use>
+                                            </svg>
+                                            <span class="text-sm">Kitchen calculator with conversions</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-6">
+                                    <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
+                                        <div>
+                                            <p class="font-semibold">Account Status</p>
+                                            <p class="text-sm opacity-70" id="billing-status">Active</p>
+                                        </div>
+                                        <span class="badge badge-theme-accent">PRO</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-6">
+                                    <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
+                                        <div>
+                                            <p class="font-semibold">Email</p>
+                                            <p class="text-sm opacity-70" id="billing-email">Loading...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-6 flex gap-2">
+                                    <button id="update-payment-btn" class="btn btn-outline flex-1" disabled>
+                                        Update Payment Method
+                                    </button>
+                                    <button id="cancel-subscription-btn" class="btn btn-outline btn-error flex-1" disabled>
+                                        Cancel Subscription
+                                    </button>
+                                </div>
+                                <p class="text-xs opacity-60 text-center mt-2">Payment management coming soon</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Temp Tab: Create Recipe -->
+                <section id="create-recipe-page" class="page temp-tab-page">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h2 class="card-title">Create New Recipe</h2>
+                                    <button class="btn btn-error btn-sm btn-circle" onclick="closeTempTab('create-recipe')" title="Close">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <use href="#icon-close"></use>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="text-sm opacity-70">Add a new recipe to your collection with optional image</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <form id="create-recipe-form" class="space-y-6">
+                                    <!-- Recipe Image Upload -->
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text font-semibold">Recipe Image (Optional)</span>
+                                        </label>
+                                        <div class="flex flex-col sm:flex-row gap-4 items-start">
+                                            <div id="recipe-image-preview" class="w-full sm:w-48 h-48 bg-base-200 rounded-lg border-2 border-dashed border-base-300 flex items-center justify-center overflow-hidden">
+                                                <div class="text-center">
+                                                    <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <use href="#icon-image"></use>
+                                                    </svg>
+                                                    <p class="text-sm opacity-70">No image</p>
+                                                </div>
+                                            </div>
+                                            <div class="flex-1 space-y-2">
+                                                <input type="file" id="recipe-image-input" accept="image/*" class="file-input file-input-bordered file-input-primary w-full">
+                                                <p class="text-xs opacity-70">Upload a photo of your recipe (Max 5MB, JPG/PNG/WebP)</p>
+                                                <button type="button" id="remove-recipe-image" class="btn btn-outline btn-error btn-sm" style="display: none;">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <use href="#icon-trash"></use>
+                                                    </svg>
+                                                    Remove Image
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recipe Details -->
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text font-semibold">Recipe Name</span>
+                                        </label>
+                                        <input type="text" id="create-recipe-name" class="input input-bordered" placeholder="e.g., Chocolate Chip Cookies" required>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text">Yield/Servings</span>
+                                            </label>
+                                            <input type="number" id="create-recipe-yield" class="input input-bordered" placeholder="e.g., 12" value="1" min="0.1" step="0.1" required>
+                                        </div>
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text">Unit (optional)</span>
+                                            </label>
+                                            <input type="text" id="create-recipe-yield-unit" class="input input-bordered" placeholder="e.g., cookies, servings">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text font-semibold">Ingredients</span>
+                                        </label>
+                                        <textarea id="create-recipe-ingredients" rows="10" placeholder="Enter ingredients, one per line (both formats work):&#10;2 cups flour OR Flour – 2 cups&#10;1 cup sugar OR Sugar – 1 cup&#10;3 eggs OR Eggs – 3 large&#10;1/2 cup butter OR Butter – 1/2 cup" class="textarea textarea-bordered" required></textarea>
+                                        <label class="label">
+                                            <span class="label-text-alt">Enter one ingredient per line with quantity, unit, and name</span>
+                                        </label>
+                                    </div>
+
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text">Instructions (optional)</span>
+                                        </label>
+                                        <textarea id="create-recipe-instructions" rows="8" placeholder="Enter recipe instructions here..." class="textarea textarea-bordered"></textarea>
+                                    </div>
+
+                                    <div class="flex gap-3 justify-end">
+                                        <button type="button" class="btn btn-outline" onclick="closeTempTab('create-recipe')">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-check"></use>
+                                            </svg>
+                                            Save Recipe
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Temp Tab: Create Menu -->
+                <section id="create-menu-page" class="page temp-tab-page">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h2 class="card-title">Create New Menu</h2>
+                                    <button class="btn btn-error btn-sm btn-circle" onclick="closeTempTab('create-menu')" title="Close">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <use href="#icon-close"></use>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="text-sm opacity-70">Build a menu by selecting recipes from your collection</p>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <form id="create-menu-form" class="space-y-6">
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text font-semibold">Menu Name</span>
+                                        </label>
+                                        <input type="text" id="create-menu-name" class="input input-bordered" placeholder="e.g., Sunday Brunch Menu" required>
+                                    </div>
+
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text">Description (optional)</span>
+                                        </label>
+                                        <textarea id="create-menu-description" rows="3" placeholder="Describe this menu..." class="textarea textarea-bordered"></textarea>
+                                    </div>
+
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text font-semibold">Select Recipes</span>
+                                        </label>
+                                        <div id="menu-recipe-selection" class="space-y-2 max-h-96 overflow-y-auto p-4 bg-base-200 rounded-lg">
+                                            <!-- Will be populated with checkboxes for each saved recipe -->
+                                            <p class="text-sm opacity-70 text-center py-8">Loading recipes...</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text font-semibold">Selected Recipes</span>
+                                        </label>
+                                        <div id="selected-recipes-display" class="p-4 bg-base-200 rounded-lg min-h-[100px]">
+                                            <p class="text-sm opacity-70 text-center">No recipes selected yet</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex gap-3 justify-end">
+                                        <button type="button" class="btn btn-outline" onclick="closeTempTab('create-menu')">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-check"></use>
+                                            </svg>
+                                            Create Menu
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="menus-page" class="page">
+                    <div class="max-w-5xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                                    <div>
+                                        <h2 class="card-title" data-i18n="menus_title">My Menus</h2>
+                                        <p class="text-sm opacity-70" data-i18n="menus_subtitle">Create Menus with Your Recipes</p>
+                                    </div>
+                                    <button id="create-menu-btn" class="btn btn-primary btn-sm w-full sm:w-auto">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <use href="#icon-plus"></use>
+                                        </svg>
+                                        <span data-i18n="menus_create">New Menu</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="menus-search-container" class="card bg-base-100 shadow-xl" style="display: none;">
+                            <div class="card-body">
+                                <div class="form-control">
+                                    <div class="relative">
+                                        <input type="text" id="menus-search" class="input input-bordered w-full pr-10" placeholder="Search menus by name...">
+                                        <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="menus-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                        <div id="menus-empty-state" class="card bg-base-100 shadow-xl">
+                            <div class="card-body text-center py-12">
+                                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <use href="#icon-clipboard"></use>
+                                </svg>
+                                <h3 class="text-xl font-semibold mb-2">Create Your First Menu</h3>
+                                <p class="text-base-content/70 mb-4">Build menus with your saved recipes.<br>Perfect for organizing your service menus!</p>
+                                <button id="create-menu-btn-2" class="btn btn-primary">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <use href="#icon-plus"></use>
+                                    </svg>
+                                    Create Menu
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="pdf-management-page" class="page">
+                    <div class="max-w-5xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                                    <div>
+                                        <h2 class="card-title" data-i18n="pdf_title">PDF Management</h2>
+                                        <p class="text-sm opacity-70" data-i18n="pdf_subtitle">Upload & Store Your Menu PDFs</p>
+                                    </div>
+                                    <button id="upload-pdf-btn" class="btn btn-primary btn-sm w-full sm:w-auto">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <use href="#icon-upload"></use>
+                                        </svg>
+                                        <span data-i18n="pdf_upload">Upload PDF</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="pdfs-search-container" class="card bg-base-100 shadow-xl" style="display: none;">
+                            <div class="card-body">
+                                <div class="form-control">
+                                    <div class="relative">
+                                        <input type="text" id="pdfs-search" class="input input-bordered w-full pr-10" placeholder="Search PDFs by name...">
+                                        <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="pdf-files-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+                        <div id="pdf-empty-state" class="card bg-base-100 shadow-xl">
+                            <div class="card-body text-center py-12">
+                                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <use href="#icon-upload"></use>
+                                </svg>
+                                <h3 class="text-xl font-semibold mb-2">Add Your First PDF</h3>
+                                <p class="text-base-content/70 mb-4">Upload and store your menu PDFs for easy access.<br>Keep all your important documents in one place!</p>
+                                <button id="upload-pdf-btn-2" class="btn btn-primary">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <use href="#icon-upload"></use>
+                                    </svg>
+                                    Upload First PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="saved-stores-page" class="page">
+                    <div class="max-w-5xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                                    <div>
+                                        <h2 class="card-title" data-i18n="markets_title">My Markets</h2>
+                                        <p class="text-sm opacity-70" data-i18n="markets_full_subtitle">Manage Your Supplier & Market Information</p>
+                                    </div>
+                                    <div class="flex gap-2 flex-wrap w-full sm:w-auto">
+                                        <button id="export-stores-btn" class="btn btn-outline btn-sm flex-1 sm:flex-initial">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-download"></use>
+                                            </svg>
+                                            <span data-i18n="markets_export">Export</span>
+                                        </button>
+                                        <button id="add-store-btn" class="btn btn-primary btn-sm flex-1 sm:flex-initial">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-plus"></use>
+                                            </svg>
+                                            <span data-i18n="markets_add">Add Market</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="markets-search-container" class="card bg-base-100 shadow-xl" style="display: none;">
+                            <div class="card-body">
+                                <div class="form-control">
+                                    <div class="relative">
+                                        <input type="text" id="markets-search" class="input input-bordered w-full pr-10" placeholder="Search markets by name...">
+                                        <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="stores-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                        
+                        <div id="stores-empty-state" class="card bg-base-100 shadow-xl">
+                            <div class="card-body text-center py-12">
+                                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <use href="#icon-book"></use>
+                                </svg>
+                                <h3 class="text-xl font-semibold mb-2">Add Your First Market</h3>
+                                <p class="text-base-content/70 mb-4">Save your suppliers and markets for quick access.<br>Store contact info, addresses, and notes all in one place!</p>
+                                <button id="add-store-btn-2" class="btn btn-primary">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <use href="#icon-plus"></use>
+                                    </svg>
+                                    Add First Market
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="shopping-page" class="page">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex flex-col gap-4">
+                                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                                        <div>
+                                            <h2 class="card-title" data-i18n="shopping_title">Shopping List</h2>
+                                            <p class="text-sm opacity-70" data-i18n="shopping_subtitle">Professional Procurement & Inventory Planning</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2 w-full">
+                                        <button id="manage-categories-btn" class="btn btn-outline btn-sm flex-1">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-settings"></use>
+                                            </svg>
+                                            Categories
+                                        </button>
+                                        <button id="generate-from-recipes-btn" class="btn btn-outline btn-sm flex-1">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-book"></use>
+                                            </svg>
+                                            From Recipes
+                                        </button>
+                                        <button id="add-custom-item-btn" class="btn btn-primary btn-sm flex-1">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-plus"></use>
+                                            </svg>
+                                            Add Item
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="shopping-categories-container" class="space-y-4"></div>
+
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-lg font-semibold" data-i18n="shopping_subtotal">Subtotal</h3>
+                                    <div class="text-right">
+                                        <p class="text-2xl font-bold" style="color: var(--accent-color);" id="shopping-subtotal">$0.00</p>
+                                        <p class="text-xs opacity-70" id="shopping-items-with-price"><span data-i18n="shopping_items_priced">0 items priced</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row justify-end gap-2">
+                            <button id="clear-checked-btn" class="btn btn-outline w-full sm:w-auto" data-i18n="shopping_clear_checked">Clear Checked</button>
+                            <button id="export-shopping-list-btn" class="btn btn-primary w-full sm:w-auto" data-i18n="shopping_export">Export List</button>
+                        </div>
+
+                        <div id="shopping-empty-state" class="card bg-base-100 shadow-xl" style="display: none;">
+                            <div class="card-body text-center py-12">
+                                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <use href="#icon-list"></use>
+                                </svg>
+                                <h3 class="text-xl font-semibold mb-2" data-i18n="shopping_start_title">Start Your Shopping List</h3>
+                                <p class="text-base-content/70 mb-4"><span data-i18n="shopping_start_desc">Generate a list from your recipes or add items manually.</span><br><span data-i18n="shopping_start_tip">Organize everything by category for efficient shopping!</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Mobile Temp Tab: Recipes Hub -->
+                <section id="mobile-recipes-hub-page" class="page temp-tab-page lg:hidden">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h2 class="card-title">My Recipes</h2>
+                                </div>
+                                <p class="text-sm opacity-70">Manage Your Recipe Collection</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4">
+                            <button onclick="navigateToPage('recipes')" class="mobile-hub-card">
+                                <div class="flex items-center gap-4">
+                                    <div class="mobile-hub-icon">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <use href="#icon-book"></use>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1 text-left">
+                                        <h3 class="font-semibold text-lg mb-1">Saved Recipes</h3>
+                                        <p class="text-sm opacity-70">View and manage your recipe collection</p>
+                                    </div>
+                                    <svg class="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            </button>
+
+                            <button onclick="navigateToPage('scaler')" class="mobile-hub-card">
+                                <div class="flex items-center gap-4">
+                                    <div class="mobile-hub-icon">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <use href="#icon-calculator"></use>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1 text-left">
+                                        <h3 class="font-semibold text-lg mb-1">Recipe Scaler</h3>
+                                        <p class="text-sm opacity-70">Scale recipes to any yield size</p>
+                                    </div>
+                                    <svg class="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Mobile Temp Tab: Menus Hub -->
+                <section id="mobile-menus-hub-page" class="page temp-tab-page lg:hidden">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h2 class="card-title">My Menus</h2>
+                                </div>
+                                <p class="text-sm opacity-70">Organize Your Service Menus</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4">
+                            <button onclick="navigateToPage('menus')" class="mobile-hub-card">
+                                <div class="flex items-center gap-4">
+                                    <div class="mobile-hub-icon">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <use href="#icon-clipboard"></use>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1 text-left">
+                                        <h3 class="font-semibold text-lg mb-1">My Menus</h3>
+                                        <p class="text-sm opacity-70">Create and manage menus with your recipes</p>
+                                    </div>
+                                    <svg class="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            </button>
+
+                            <button onclick="navigateToPage('pdf-management')" class="mobile-hub-card">
+                                <div class="flex items-center gap-4">
+                                    <div class="mobile-hub-icon">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <use href="#icon-pdf"></use>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1 text-left">
+                                        <h3 class="font-semibold text-lg mb-1">PDF Management</h3>
+                                        <p class="text-sm opacity-70">Store and manage menu PDFs</p>
+                                    </div>
+                                    <svg class="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Mobile Temp Tab: Shopping Hub -->
+                <section id="mobile-shopping-hub-page" class="page temp-tab-page lg:hidden">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h2 class="card-title">My Shopping</h2>
+                                </div>
+                                <p class="text-sm opacity-70">Procurement & Inventory Planning</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4">
+                            <button onclick="navigateToPage('shopping')" class="mobile-hub-card">
+                                <div class="flex items-center gap-4">
+                                    <div class="mobile-hub-icon">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <use href="#icon-cart"></use>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1 text-left">
+                                        <h3 class="font-semibold text-lg mb-1">My Shopping List</h3>
+                                        <p class="text-sm opacity-70">Create and manage shopping lists</p>
+                                    </div>
+                                    <svg class="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            </button>
+
+                            <button onclick="navigateToPage('saved-stores')" class="mobile-hub-card">
+                                <div class="flex items-center gap-4">
+                                    <div class="mobile-hub-icon">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <use href="#icon-store"></use>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1 text-left">
+                                        <h3 class="font-semibold text-lg mb-1">Saved Markets</h3>
+                                        <p class="text-sm opacity-70">Manage suppliers and market information</p>
+                                    </div>
+                                    <svg class="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Mobile Bottom Navigation Bar -->
+            <nav id="mobile-bottom-nav" class="lg:hidden fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 z-40 safe-area-bottom">
+                <div class="flex items-center justify-around px-1 py-2">
+                    <button class="mobile-nav-btn nav-item flex flex-col items-center gap-1 px-2 py-2 rounded-lg" data-page="mobile-recipes-hub">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-book"></use>
+                        </svg>
+                        <span class="text-xs">Recipes</span>
+                    </button>
+                    <button class="mobile-nav-btn nav-item flex flex-col items-center gap-1 px-2 py-2 rounded-lg" data-page="mobile-menus-hub">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-clipboard"></use>
+                        </svg>
+                        <span class="text-xs">Menus</span>
+                    </button>
+                    <button class="mobile-nav-btn nav-item flex flex-col items-center gap-1 px-2 py-2 rounded-lg" data-page="mobile-shopping-hub">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-cart"></use>
+                        </svg>
+                        <span class="text-xs">Shopping</span>
+                    </button>
+                    <button class="mobile-nav-btn nav-item flex flex-col items-center gap-1 px-2 py-2 rounded-lg" data-page="calendar">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span class="text-xs">Calendar</span>
+                    </button>
+                    <button class="mobile-nav-btn nav-item flex flex-col items-center gap-1 px-2 py-2 rounded-lg" data-page="calculator">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-calculator-alt"></use>
+                        </svg>
+                        <span class="text-xs">Calc</span>
+                    </button>
+                </div>
+            </nav>
+        </main>
+    </div>
+
+    <div id="mobile-sidebar" class="lg:hidden fixed inset-0 z-50 hidden">
+        <div id="mobile-sidebar-overlay" class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="relative w-80 h-full bg-base-200 border-r border-base-300 flex flex-col">
+            <div class="bg-base-100 border-b border-base-300 p-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <img id="mobile-sidebar-logo" src="ui/img/logo.png" alt="ChefOS" class="w-12 h-12">
+                    <div>
+                        <h1 class="text-xl font-bold text-primary">ChefOS</h1>
+                        <p class="text-sm opacity-70">Professional Edition</p>
+                    </div>
+                </div>
+                <button id="close-mobile-menu" class="p-2 rounded-lg hover:bg-base-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-close"></use>
+                    </svg>
+                </button>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <div class="nav-group">
+                    <div class="nav-parent p-3 rounded-lg flex items-center space-x-4" data-group="recipes-group">
+                        <svg class="w-6 h-6 text-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-book"></use>
+                        </svg>
+                        <span class="flex-1">My Recipes</span>
+                        <svg id="mobile-recipes-lock-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-lock"></use>
+                        </svg>
+                        <svg class="w-4 h-4 nav-arrow transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div class="nav-sub-items ml-6 space-y-1 hidden">
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="recipes">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-book"></use>
+                            </svg>
+                            <span class="text-sm">My Recipes</span>
+                        </div>
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="scaler">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-calculator"></use>
+                            </svg>
+                            <span class="text-sm">Recipe Scaler</span>
+                            <span class="badge badge-theme-accent badge-sm ml-auto pro-badge" style="font-size: 0.6rem;">PRO</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav-group">
+                    <div class="nav-parent p-3 rounded-lg flex items-center space-x-4" data-group="menus-group">
+                        <svg class="w-6 h-6 text-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-clipboard"></use>
+                        </svg>
+                        <span class="flex-1">My Menus</span>
+                        <svg id="mobile-menus-lock-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-lock"></use>
+                        </svg>
+                        <svg class="w-4 h-4 nav-arrow transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div class="nav-sub-items ml-6 space-y-1 hidden">
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="menus">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-clipboard"></use>
+                            </svg>
+                            <span class="text-sm">My Menus</span>
+                        </div>
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="pdf-management">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-pdf"></use>
+                            </svg>
+                            <span class="text-sm">PDF Management</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav-group">
+                    <div class="nav-parent p-3 rounded-lg flex items-center space-x-4" data-group="shopping-group">
+                        <svg class="w-6 h-6 text-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-cart"></use>
+                        </svg>
+                        <span class="flex-1">My Shopping</span>
+                        <svg id="mobile-shopping-lock-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-lock"></use>
+                        </svg>
+                        <svg class="w-4 h-4 nav-arrow transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div class="nav-sub-items ml-6 space-y-1 hidden">
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="shopping">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-cart"></use>
+                            </svg>
+                            <span class="text-sm">My Shopping List</span>
+                        </div>
+                        <div class="nav-item nav-sub-item p-2 rounded-lg flex items-center space-x-3" data-page="saved-stores">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <use href="#icon-store"></use>
+                            </svg>
+                            <span class="text-sm">Saved Markets</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-item p-3 rounded-lg flex items-center space-x-4" data-page="calendar">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <span>My Calendar</span>
+                </div>
+                <div class="nav-item p-3 rounded-lg flex items-center space-x-4" data-page="calculator">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-calculator-alt"></use>
+                    </svg>
+                    <span>Kitchen Calc</span>
+                </div>
+                <div class="nav-item p-3 rounded-lg flex items-center space-x-4" data-page="settings">
+                    <svg class="w-6 h-6 text-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-settings"></use>
+                    </svg>
+                    <span>Settings</span>
+                </div>
+                <div class="nav-item p-3 rounded-lg flex items-center space-x-4" data-page="billing">
+                    <svg class="w-6 h-6 text-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                    </svg>
+                    <span>Billing</span>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-base-300 bg-base-100">
+                <div class="text-center text-sm text-base-content/70">
+                    <p class="font-medium">ChefOS</p>
+                    <p class="text-xs opacity-60">Professional Edition</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="auth-modal" class="modal-container" style="display: none;" data-auth-required="true">
+        <div class="modal-content max-w-md" id="auth-modal-content">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-lock"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-2">Welcome Back</h3>
+            <p class="text-base-content/70 mb-6">Sign in to your ChefOS account</p>
+            
+            <form id="auth-form" class="space-y-4" onsubmit="return false;">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Email</span>
+                    </label>
+                    <input type="email" id="auth-email" class="input input-bordered w-full" placeholder="your@email.com" required autocomplete="email">
+                </div>
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Password</span>
+                    </label>
+                    <input type="password" id="auth-password" class="input input-bordered w-full" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div class="form-control">
+                        <label class="cursor-pointer label justify-start gap-2 p-0">
+                            <input type="checkbox" id="auth-remember" class="checkbox checkbox-primary checkbox-sm">
+                            <span class="label-text text-sm">Remember me</span>
+                        </label>
+                    </div>
+                    <button type="button" id="auth-forgot-password" class="text-sm text-primary hover:underline">Forgot password?</button>
+                </div>
+                
+                <div id="auth-error" class="alert alert-error text-sm hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-warning"></use>
+                    </svg>
+                    <span id="auth-error-message">Invalid email or password</span>
+                </div>
+                
+                <button type="submit" class="btn btn-primary w-full" id="auth-submit-btn">
+                    Sign In
+                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                    </svg>
+                </button>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <p class="text-sm opacity-70">
+                    Don't have an account? 
+                    <button type="button" id="auth-create-account" class="text-primary hover:underline font-semibold">Create Account</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="create-account-modal" class="modal-container" style="display: none;">
+        <div class="modal-content max-w-lg" id="create-account-content">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-2">Create Your Account</h3>
+            <p class="text-base-content/70 mb-6">Choose your plan and get started with ChefOS</p>
+            
+            <form id="create-account-form" class="space-y-4" onsubmit="return false;">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Email</span>
+                    </label>
+                    <input type="email" id="create-email" class="input input-bordered w-full" placeholder="your@email.com" required autocomplete="email">
+                </div>
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Password</span>
+                    </label>
+                    <input type="password" id="create-password" class="input input-bordered w-full" placeholder="••••••••" required autocomplete="new-password">
+                </div>
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Confirm Password</span>
+                    </label>
+                    <input type="password" id="create-password-confirm" class="input input-bordered w-full" placeholder="••••••••" required autocomplete="new-password">
+                </div>
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Select Your Plan</span>
+                    </label>
+                    
+                    <div class="space-y-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="plan" value="trial" class="hidden peer" id="plan-trial" checked>
+                            <div class="border-2 border-base-300 peer-checked:border-success peer-checked:bg-success/10 rounded-lg p-4 transition-all">
+                                <div class="flex items-start gap-3">
+                                    <div class="flex items-center justify-center w-5 h-5 rounded-full border-2 border-base-300 peer-checked:border-success peer-checked:bg-success mt-0.5">
+                                        <div class="hidden peer-checked:block w-2 h-2 rounded-full bg-success"></div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <p class="font-semibold text-success">7-Day Free Trial</p>
+                                        </div>
+                                        <p class="text-sm opacity-70">Try all features free for 7 days. No credit card required.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="cursor-pointer">
+                            <input type="radio" name="plan" value="pro" class="hidden peer" id="plan-pro">
+                            <div class="border-2 border-base-300 peer-checked:border-primary peer-checked:bg-primary/10 rounded-lg p-4 transition-all">
+                                <div class="flex items-start gap-3">
+                                    <div class="flex items-center justify-center w-5 h-5 rounded-full border-2 border-base-300 peer-checked:border-primary peer-checked:bg-primary mt-0.5">
+                                        <div class="hidden peer-checked:block w-2 h-2 rounded-full bg-primary"></div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                                            </svg>
+                                            <p class="font-semibold text-primary">Professional Subscription</p>
+                                            <span class="badge badge-primary badge-sm">$5/month</span>
+                                        </div>
+                                        <p class="text-sm opacity-70">Get full access to all ChefOS features including up-to 10,000 recipes, menu management, and smart shopping lists.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="create-account-error" class="alert alert-error text-sm hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-warning"></use>
+                    </svg>
+                    <span id="create-account-error-message">An error occurred</span>
+                </div>
+                
+                <button type="submit" class="btn btn-primary w-full" id="create-account-submit-btn">
+                    Create Account
+                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                    </svg>
+                </button>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <p class="text-sm opacity-70">
+                    Already have an account? 
+                    <button type="button" id="back-to-signin" class="text-primary hover:underline font-semibold">Sign In</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="trial-ended-modal" class="modal-container" style="display: none;">
+        <div class="modal-content max-w-md">
+            <div class="modal-icon-container" style="background-color: #f59e0b;">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-2">Your Free Trial Has Ended</h3>
+            <p class="text-base-content/70 mb-6">Thank you for trying ChefOS! Your 7-day free trial has expired.</p>
+            
+            <div class="bg-base-200 p-4 rounded-lg mb-6">
+                <h4 class="font-semibold mb-3">Continue with Professional Plan</h4>
+                <div class="space-y-2 mb-4">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-check"></use>
+                        </svg>
+                        <span class="text-sm">Save up-to 10,000 Recipes</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-check"></use>
+                        </svg>
+                        <span class="text-sm">Professional recipe scaler</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-check"></use>
+                        </svg>
+                        <span class="text-sm">Menu management & PDF storage</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-check"></use>
+                        </svg>
+                        <span class="text-sm">Smart shopping lists</span>
+                    </div>
+                </div>
+                <div class="bg-primary/10 border border-primary/20 p-3 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold text-primary">Professional Plan</span>
+                        <span class="text-xl font-bold text-primary">$5/month</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-2">
+                <button id="upgrade-to-pro-btn" class="btn btn-primary w-full">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                    </svg>
+                    Upgrade to Professional - $5/month
+                </button>
+                <button id="trial-ended-signout-btn" class="btn btn-outline w-full">
+                    Sign Out
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="welcome-modal" class="modal-container hidden">
+        <div class="modal-content">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-shield"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-4">Welcome to ChefOS!</h3>
+            <div class="space-y-4 text-sm text-base-content/80">
+                <div class="bg-base-300 p-3 rounded-lg border border-base-content/10">
+                    <p><strong class="font-medium">Your Data is Private:</strong> This app runs entirely in your browser. Your recipes and data are never shared with us.</p>
+                </div>
+                <div class="bg-base-300 p-3 rounded-lg border border-base-content/10">
+                     <p><strong class="font-medium">Important:</strong> Clearing your browser data for this site will delete your saved recipes. Be sure to back them up!</p>
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button id="welcome-understand" class="btn btn-primary btn-sm">I Understand</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-notification" class="fixed top-4 right-4 z-50" style="display: none;"></div>
+
+    <div id="ingredient-modal" class="modal-container" style="display: none;">
+        <div class="ingredient-modal-content">
+            <div class="ingredient-modal-header">
+                <h2 class="ingredient-modal-title">Select Ingredient</h2>
+                <button id="close-ingredient-modal" class="ingredient-modal-close">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-close"></use>
+                    </svg>
+                </button>
+            </div>
+            <div class="ingredient-modal-body">
+                <input type="text" id="ingredient-search" class="ingredient-search-input" placeholder="Search ingredients...">
+                <div id="ingredient-list" class="ingredient-list-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="print-area" class="hidden">
+        <div class="p-8">
+            <h1 id="print-title" class="text-2xl font-bold mb-2"></h1>
+            <p id="print-yield" class="text-sm opacity-70 mb-6"></p>
+            <table id="print-table" class="w-full">
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="confirmation-modal" class="modal-container hidden">
+        <div class="modal-content">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-warning"></use>
+                </svg>
+            </div>
+            <h3 id="confirmation-title" class="text-lg font-semibold text-base-content mb-2">Confirm Action</h3>
+            <p id="confirmation-message" class="text-base-content/70 mb-6">Are you sure you want to perform this action?</p>
+            <div class="flex gap-3 justify-end">
+                <button id="confirmation-cancel" class="btn btn-outline btn-sm">Cancel</button>
+                <button id="confirmation-confirm" class="btn btn-primary btn-sm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="import-recipe-modal" class="modal-container hidden">
+        <div class="modal-content max-w-2xl">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-book"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-2">Import from Saved Recipes</h3>
+            <p class="text-base-content/70 mb-4">Select a recipe to import into the scaler</p>
+            
+            <div id="import-recipes-list" class="space-y-2 max-h-96 overflow-y-auto mb-6">
+                <!-- Will be populated dynamically -->
+            </div>
+            
+            <div class="flex gap-3 justify-end">
+                <button id="import-recipe-cancel" class="btn btn-outline btn-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pin-modal" class="modal-container hidden">
+        <div class="modal-content">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-lock"></use>
+                </svg>
+            </div>
+            <h3 id="pin-title" class="text-lg font-semibold text-base-content mb-2">Enter PIN</h3>
+            <p id="pin-message" class="text-base-content/70 mb-4">Please enter your PIN to access this feature</p>
+            <div class="mb-6">
+                <input type="password" id="pin-input" class="input input-bordered w-full text-center text-2xl tracking-widest" placeholder="••••" maxlength="6" autocomplete="off">
+                <div id="pin-error" class="text-error text-sm mt-2 hidden">Incorrect PIN. Please try again.</div>
+            </div>
+            <div class="flex gap-3 justify-end">
+                <button id="pin-cancel" class="btn btn-outline btn-sm">Cancel</button>
+                <button id="pin-submit" class="btn btn-primary btn-sm">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pin-setup-modal" class="modal-container hidden">
+        <div class="modal-content">
+             <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-lock"></use>
+                </svg>
+            </div>
+            <h3 id="pin-setup-title" class="text-lg font-semibold text-base-content mb-2">Set Up PIN</h3>
+            <p id="pin-setup-message" class="text-base-content/70 mb-4">Create a 4-6 digit PIN to protect your recipes and menus</p>
+            <div class="mb-4">
+                <input type="password" id="pin-setup-input" class="input input-bordered w-full text-center text-2xl tracking-widest" placeholder="••••" maxlength="6" autocomplete="off">
+                <div id="pin-setup-error" class="text-error text-sm mt-2 hidden">PIN must be 4-6 digits</div>
+            </div>
+            <div class="mb-4">
+                <input type="password" id="pin-confirm-input" class="input input-bordered w-full text-center text-2xl tracking-widest" placeholder="••••" maxlength="6" autocomplete="off">
+                <div id="pin-confirm-error" class="text-error text-sm mt-2 hidden">PINs do not match</div>
+            </div>
+            <div class="flex gap-3 justify-end">
+                <button id="pin-setup-cancel" class="btn btn-outline btn-sm">Cancel</button>
+                <button id="pin-setup-submit" class="btn btn-primary btn-sm">Set PIN</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="store-modal" class="modal-container hidden">
+        <div class="modal-content">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-book"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-2">Add Market</h3>
+            <div class="space-y-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Market Name</span>
+                    </label>
+                    <input type="text" id="store-name-input" class="input input-bordered" placeholder="e.g., Restaurant Depot, Sysco">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Address</span>
+                    </label>
+                    <input type="text" id="store-address-input" class="input input-bordered" placeholder="Street address">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Phone</span>
+                    </label>
+                    <input type="tel" id="store-phone-input" class="input input-bordered" placeholder="Phone number">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Notes</span>
+                    </label>
+                    <textarea id="store-notes-input" class="textarea textarea-bordered" placeholder="Hours, contact person, etc."></textarea>
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button id="store-modal-cancel" class="btn btn-outline btn-sm">Cancel</button>
+                <button id="store-modal-save" class="btn btn-primary btn-sm">Save Market</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="menu-file-input" accept=".pdf,.docx,.doc" style="display: none;">
+    <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
+
+    <div id="custom-item-modal" class="modal-container hidden">
+        <div class="modal-content">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-plus"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-2">Add Custom Item</h3>
+            <div class="space-y-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Item Name</span>
+                    </label>
+                    <input type="text" id="custom-item-name" class="input input-bordered" placeholder="e.g., Extra virgin olive oil">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Quantity</span>
+                    </label>
+                    <input type="text" id="custom-item-quantity" class="input input-bordered" placeholder="e.g., 2 bottles, 500g">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Price (Optional)</span>
+                    </label>
+                    <input type="number" id="custom-item-price" class="input input-bordered" placeholder="e.g., 12.99" step="0.01" min="0">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Category</span>
+                    </label>
+                    <select id="custom-item-category" class="select select-bordered">
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button id="custom-item-cancel" class="btn btn-outline btn-sm">Cancel</button>
+                <button id="custom-item-add" class="btn btn-primary btn-sm">Add Item</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="category-manager-modal" class="modal-container hidden">
+        <div class="modal-content max-w-2xl">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-settings"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-4">Manage Categories</h3>
+            <div class="space-y-4">
+                <div class="flex gap-2">
+                    <input type="text" id="new-category-name" class="input input-bordered flex-1" placeholder="New category name">
+                    <button id="add-category-btn" class="btn btn-primary btn-sm">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-plus"></use>
+                        </svg>
+                        Add
+                    </button>
+                </div>
+                <div class="divider">Current Categories</div>
+                <div id="categories-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button id="category-manager-close" class="btn btn-primary btn-sm">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-recipe-modal" class="modal-container hidden" style="display: none !important;">
+        <div class="modal-content max-w-2xl">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-book"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-4">Add New Recipe</h3>
+            <div class="space-y-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Recipe Name</span>
+                    </label>
+                    <input type="text" id="add-recipe-name" class="input input-bordered" placeholder="e.g., Chocolate Chip Cookies">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Yield/Servings</span>
+                        </label>
+                        <input type="number" id="add-recipe-yield" class="input input-bordered" placeholder="e.g., 12" value="1" min="0.1" step="0.1">
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Unit (optional)</span>
+                        </label>
+                        <input type="text" id="add-recipe-yield-unit" class="input input-bordered" placeholder="e.g., cookies, servings">
+                    </div>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Ingredients</span>
+                    </label>
+                    <textarea id="add-recipe-ingredients" rows="10" placeholder="Enter ingredients, one per line (both formats work):&#10;2 cups flour OR Flour – 2 cups&#10;1 cup sugar OR Sugar – 1 cup&#10;3 eggs OR Eggs – 3 large&#10;1/2 cup butter OR Butter – 1/2 cup" class="textarea textarea-bordered"></textarea>
+                    <label class="label">
+                        <span class="label-text-alt">Enter one ingredient per line with quantity, unit, and name</span>
+                    </label>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Instructions (optional)</span>
+                    </label>
+                    <textarea id="add-recipe-instructions" rows="5" placeholder="Enter recipe instructions here..." class="textarea textarea-bordered"></textarea>
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button id="add-recipe-cancel" class="btn btn-outline btn-sm">Cancel</button>
+                <button id="add-recipe-save" class="btn btn-primary btn-sm">Save Recipe</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="create-menu-modal" class="modal-container hidden" style="display: none !important;">
+        <div class="modal-content">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-clipboard"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-4">Create New Menu</h3>
+            <div class="space-y-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Menu Name</span>
+                    </label>
+                    <input type="text" id="create-menu-name" class="input input-bordered" placeholder="e.g., Dinner Service, Catering Menu">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Description (optional)</span>
+                    </label>
+                    <textarea id="create-menu-description" rows="3" placeholder="Brief description of this menu..." class="textarea textarea-bordered"></textarea>
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button id="create-menu-cancel" class="btn btn-outline btn-sm">Cancel</button>
+                <button id="create-menu-save" class="btn btn-primary btn-sm">Create Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-menu-modal" class="modal-container hidden" style="display: none !important;">
+        <div class="modal-content max-w-3xl">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-clipboard"></use>
+                </svg>
+            </div>
+            <h3 id="view-menu-title" class="text-lg font-semibold text-base-content mb-2"></h3>
+            <p id="view-menu-description" class="text-sm opacity-70 mb-4"></p>
+            <div class="space-y-3 max-h-96 overflow-y-auto mb-6" id="view-menu-recipes-list"></div>
+            <div class="flex gap-3 justify-end">
+                <button id="export-menu-btn" class="btn btn-outline btn-sm">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-download"></use>
+                    </svg>
+                    Export
+                </button>
+                <button onclick="hideViewMenuModal()" class="btn btn-primary btn-sm">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-menu-modal" class="modal-container hidden" style="display: none !important;">
+        <div class="modal-content max-w-4xl">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-clipboard"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-4">Edit Menu</h3>
+            <div class="space-y-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Menu Name</span>
+                    </label>
+                    <input type="text" id="edit-menu-name" class="input input-bordered">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Description (optional)</span>
+                    </label>
+                    <textarea id="edit-menu-description" rows="2" class="textarea textarea-bordered"></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="font-semibold mb-3">Menu Recipes</h4>
+                        <div class="space-y-2 max-h-80 overflow-y-auto" id="edit-menu-recipes-list"></div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-3">Available Recipes</h4>
+                        <div class="space-y-2 max-h-80 overflow-y-auto" id="available-recipes-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button onclick="hideEditMenuModal()" class="btn btn-outline btn-sm">Cancel</button>
+                <button id="edit-menu-save" class="btn btn-primary btn-sm">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="export-format-modal" class="modal-container hidden">
+        <div class="modal-content">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-download"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-4">Choose Export Format</h3>
+            <p class="text-sm opacity-70 mb-6">Select the format for your export</p>
+            <div class="flex gap-3 justify-center">
+                <button id="export-txt-btn" class="btn btn-outline btn-lg flex-1">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-edit"></use>
+                    </svg>
+                    Text (.txt)
+                </button>
+                <button id="export-pdf-btn" class="btn btn-primary btn-lg flex-1">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-download"></use>
+                    </svg>
+                    PDF (.pdf)
+                </button>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button onclick="hideExportFormatModal()" class="btn btn-outline btn-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="calendar-day-modal" class="modal-container hidden">
+        <div class="modal-content max-w-2xl">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-2" id="calendar-day-modal-title">Plan for October 21</h3>
+            <p class="text-base-content/70 mb-4">Add recipes or menus to this day</p>
+            
+            <div class="space-y-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Add to Calendar</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <select id="calendar-item-type" class="select select-bordered flex-1">
+                            <option value="">Select type...</option>
+                            <option value="recipe">Recipe</option>
+                            <option value="menu">Menu</option>
+                            <option value="note">Note/Task</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="calendar-recipe-select-container" style="display: none;">
+                    <label class="label">
+                        <span class="label-text">Select Recipe</span>
+                    </label>
+                    <select id="calendar-recipe-select" class="select select-bordered w-full">
+                        <option value="">Choose a recipe...</option>
+                    </select>
+                </div>
+                
+                <div id="calendar-menu-select-container" style="display: none;">
+                    <label class="label">
+                        <span class="label-text">Select Menu</span>
+                    </label>
+                    <select id="calendar-menu-select" class="select select-bordered w-full">
+                        <option value="">Choose a menu...</option>
+                    </select>
+                </div>
+                
+                <div id="calendar-note-container" style="display: none;">
+                    <label class="label">
+                        <span class="label-text">Note/Task</span>
+                    </label>
+                    <textarea id="calendar-note-input" class="textarea textarea-bordered" rows="3" placeholder="e.g., Prep vegetables for service, Order supplies, Staff meeting"></textarea>
+                </div>
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Meal Time (Optional)</span>
+                    </label>
+                    <select id="calendar-meal-time" class="select select-bordered select-sm w-full">
+                        <option value="">No specific time</option>
+                        <option value="breakfast">Breakfast Service</option>
+                        <option value="lunch">Lunch Service</option>
+                        <option value="dinner">Dinner Service</option>
+                        <option value="prep">Prep/Mise en Place</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mt-6">
+                <h4 class="font-semibold mb-3">Planned for This Day</h4>
+                <div id="calendar-day-items-list" class="space-y-2 max-h-60 overflow-y-auto">
+                    <p class="text-sm opacity-70 text-center py-4">No items planned yet</p>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 justify-end mt-6">
+                <button id="calendar-day-modal-close" class="btn btn-outline btn-sm">Close</button>
+                <button id="calendar-day-modal-add" class="btn btn-primary btn-sm">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <use href="#icon-plus"></use>
+                    </svg>
+                    Add to Day
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="density-manager-modal" class="modal-container hidden">
+        <div class="modal-content max-w-3xl">
+            <div class="modal-icon-container">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <use href="#icon-calculator"></use>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-base-content mb-4">Manage Ingredient Densities</h3>
+            <p class="text-sm opacity-70 mb-4">Add custom ingredients with their densities (grams per milliliter)</p>
+            <div class="space-y-4">
+                <div class="flex gap-2">
+                    <input type="text" id="new-density-name" class="input input-bordered flex-1" placeholder="Ingredient name (e.g., almond milk)">
+                    <input type="number" id="new-density-value" class="input input-bordered w-32" placeholder="g/ml" step="0.01" min="0">
+                    <button id="add-density-btn" class="btn btn-primary btn-sm">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <use href="#icon-plus"></use>
+                        </svg>
+                        Add
+                    </button>
+                </div>
+                <div class="divider">Your Custom Ingredients</div>
+                <div id="custom-densities-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                <div class="divider">Built-in Ingredients</div>
+                <div id="builtin-densities-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button id="density-manager-close" class="btn btn-primary btn-sm">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/translations.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/calculator.js"></script>
+    <script src="js/menus.js"></script>
+    <script src="js/shopping.js"></script>
+    <script src="js/pdf.js"></script>
+    <script src="js/stores.js"></script>
+    <script src="js/calendar.js"></script>
+    <script src="js/temptabs.js"></script>
+    <script src="js/popups.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
+</html>

@@ -5,7 +5,7 @@
  * Run this once to set up the database
  */
 
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
 
 try {
     $pdo = getDB();

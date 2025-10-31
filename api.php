@@ -4,7 +4,7 @@
  * Handles all backend operations
  */
 
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
 
 // Get request method and path
 $method = $_SERVER['REQUEST_METHOD'];
