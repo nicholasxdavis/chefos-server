@@ -738,11 +738,25 @@ function proceedWithAuth() {
             startShimmerLoader();
         }
         
-        // Sync data from backend if cloud enabled
+        // Sync data from backend if cloud enabled (loads DB data into localStorage)
         if (typeof storage !== 'undefined' && storage.syncAll) {
-            storage.syncAll().catch(err => {
-                console.error('Sync error on load:', err);
+            // Wait for sync to complete before initializing app
+            storage.syncAll().then(() => {
+                // Reload recipes after sync completes
+                if (typeof loadRecipes === 'function') {
+                    loadRecipes();
+                }
+            }).catch(err => {
+                // Non-critical error - continue with local data
+                if (typeof loadRecipes === 'function') {
+                    loadRecipes();
+                }
             });
+        } else {
+            // No cloud sync - just load from localStorage
+            if (typeof loadRecipes === 'function') {
+                loadRecipes();
+            }
         }
     } else {
         // PIN is needed
@@ -887,8 +901,11 @@ document.addEventListener('DOMContentLoaded', () => {
         window.convertWithDensity = convertWithDensity;
         window.UNIT_CONVERSIONS = UNIT_CONVERSIONS;
         
-        // Initialize app
-        loadRecipes();
+        // Initialize app (recipes will be loaded after sync if cloud enabled)
+        // If cloud is not enabled, load from localStorage now
+        if (!isCloudEnabled() || !getUserEmail()) {
+            loadRecipes();
+        }
         navigateToPage('scaler');
         
         // Set up event listeners

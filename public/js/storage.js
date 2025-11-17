@@ -16,7 +16,7 @@ function getUserEmail() {
     return localStorage.getItem('chefos_user_email') || '';
 }
 
-// Make API call
+// Make API call with proper error handling and timeout
 async function apiCall(endpoint, method = 'GET', data = null) {
     try {
         const email = getUserEmail();
@@ -29,7 +29,9 @@ async function apiCall(endpoint, method = 'GET', data = null) {
             method,
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            // Add timeout to prevent hanging
+            signal: AbortSignal.timeout(30000) // 30 second timeout
         };
 
         if (data) {
@@ -39,25 +41,49 @@ async function apiCall(endpoint, method = 'GET', data = null) {
             const separator = endpoint.includes('?') ? '&' : '?';
             const urlWithEmail = `${url}${separator}email=${encodeURIComponent(email)}`;
             const response = await fetch(urlWithEmail, options);
+            if (!response.ok) {
+                // If response is not OK, try to parse error message
+                try {
+                    const errorData = await response.json();
+                    return { error: errorData.error || `HTTP ${response.status}` };
+                } catch {
+                    return { error: `HTTP ${response.status}` };
+                }
+            }
             return await response.json();
         }
 
         const response = await fetch(url, options);
+        if (!response.ok) {
+            // If response is not OK, try to parse error message
+            try {
+                const errorData = await response.json();
+                return { error: errorData.error || `HTTP ${response.status}` };
+            } catch {
+                return { error: `HTTP ${response.status}` };
+            }
+        }
         return await response.json();
     } catch (error) {
-        console.error('API call error:', error);
-        return { error: error.message };
+        // Handle timeout, network errors, etc.
+        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+            return { error: 'Request timeout - server may be unavailable' };
+        }
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            return { error: 'Network error - check your connection' };
+        }
+        return { error: error.message || 'Unknown error occurred' };
     }
 }
 
 // Storage wrapper with backend sync
 const storage = {
+    // Synchronous get (uses localStorage - backend sync happens via syncAll)
     get(key, fallback = null) {
         try {
             const item = localStorage.getItem(key);
             return item ? JSON.parse(item) : fallback;
         } catch (error) {
-            console.error('Storage error:', error);
             return fallback;
         }
     },
@@ -74,7 +100,6 @@ const storage = {
             
             return true;
         } catch (error) {
-            console.error('Storage error:', error);
             return false;
         }
     },
@@ -101,10 +126,17 @@ const storage = {
                 // Generic settings - save via settings endpoint
                 if (key.startsWith('chefos_') || key === 'darkMode' || key === 'selectedTheme' || 
                     key.startsWith('pin') || key === 'storedPIN' || key === 'chefos_font_family') {
-                    await apiCall('/user/settings', 'POST', {
-                        key: key,
-                        value: value
-                    });
+                    try {
+                        await apiCall('/user/settings', 'POST', {
+                            key: key,
+                            value: value
+                        });
+                    } catch (error) {
+                        // Silently fail - settings sync is optional, data is still in localStorage
+                        if (typeof console !== 'undefined' && console.warn) {
+                            console.warn('Settings sync failed (non-critical):', error);
+                        }
+                    }
                 }
                 return;
             }
@@ -112,7 +144,14 @@ const storage = {
             if (typeof mapping === 'string') {
                 // Direct endpoint mapping
                 if (key === 'yieldr_shopping_list' || key === 'yieldr_shopping_list') {
-                    await apiCall(`/data/shopping`, 'PUT', { data: value });
+                    try {
+                        await apiCall(`/data/shopping`, 'PUT', { data: value });
+                    } catch (error) {
+                        // Silently fail - sync is optional, data is still in localStorage and database
+                        if (typeof console !== 'undefined' && console.warn) {
+                            console.warn('Shopping list sync failed (non-critical):', error);
+                        }
+                    }
                 } else if (key === 'savedRecipes' || key === 'yieldr_recipes') {
                     // Save all recipes
                     const recipes = Array.isArray(value) ? value : [];
@@ -121,7 +160,12 @@ const storage = {
                         apiCall(`/data/recipes`, 'POST', {
                             recipe_id: recipe.id || recipe.recipe_id || Date.now().toString(),
                             data: recipe
-                        }).catch(err => console.error('Recipe sync error:', err));
+                        }).catch(err => {
+                            // Silently fail - sync is optional, data is still in localStorage and database
+                            if (typeof console !== 'undefined' && console.warn) {
+                                console.warn('Recipe sync failed (non-critical):', err);
+                            }
+                        });
                     });
                 } else {
                     // For other types, convert array to object with IDs
@@ -133,7 +177,12 @@ const storage = {
                             apiCall(`/data/${mapping}`, 'POST', {
                                 [`${mapping.slice(0, -1)}_id`]: itemId,
                                 data: item
-                            }).catch(err => console.error(`${mapping} sync error:`, err));
+                            }).catch(err => {
+                                // Silently fail - sync is optional, data is still in localStorage and database
+                                if (typeof console !== 'undefined' && console.warn) {
+                                    console.warn(`${mapping} sync failed (non-critical):`, err);
+                                }
+                            });
                         });
                     } else {
                         // Single item
@@ -141,19 +190,34 @@ const storage = {
                         apiCall(`/data/${mapping}`, 'POST', {
                             [`${mapping.slice(0, -1)}_id`]: itemId,
                             data: data
-                        }).catch(err => console.error(`${mapping} sync error:`, err));
+                        }).catch(err => {
+                            // Silently fail - sync is optional, data is still in localStorage and database
+                            if (typeof console !== 'undefined' && console.warn) {
+                                console.warn(`${mapping} sync failed (non-critical):`, err);
+                            }
+                        });
                     }
                 }
             } else {
                 // Custom data type
-                await apiCall('/data/custom', 'POST', {
-                    data_type: mapping.dataType,
-                    data_key: 'main',
-                    data: value
-                });
+                try {
+                    await apiCall('/data/custom', 'POST', {
+                        data_type: mapping.dataType,
+                        data_key: 'main',
+                        data: value
+                    });
+                } catch (error) {
+                    // Silently fail - sync is optional, data is still in localStorage and database
+                    if (typeof console !== 'undefined' && console.warn) {
+                        console.warn('Custom data sync failed (non-critical):', error);
+                    }
+                }
             }
         } catch (error) {
-            console.error('Backend sync error:', error);
+            // Silently fail - sync is optional, data is still in localStorage and database
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn('Backend sync error (non-critical):', error);
+            }
         }
     },
     
@@ -180,7 +244,14 @@ const storage = {
 
             if (typeof mapping === 'string') {
                 const result = await apiCall(`/data/${mapping}`, 'GET');
-                if (result.success) {
+                // Check for errors in response
+                if (result && result.error) {
+                    if (typeof console !== 'undefined' && console.warn) {
+                        console.warn(`Backend load error for ${key}:`, result.error);
+                    }
+                    return null; // Return null to fall back to localStorage
+                }
+                if (result && result.success) {
                     if (mapping === 'shopping') {
                         return result.data || {};
                     } else if (mapping === 'recipes') {
@@ -195,12 +266,22 @@ const storage = {
                 const result = await apiCall('/data/custom', 'GET', {
                     data_type: mapping.dataType
                 });
-                if (result.success && result.data) {
+                // Check for errors in response
+                if (result && result.error) {
+                    if (typeof console !== 'undefined' && console.warn) {
+                        console.warn(`Backend load error for ${key}:`, result.error);
+                    }
+                    return null; // Return null to fall back to localStorage
+                }
+                if (result && result.success && result.data) {
                     return result.data.main || result.data;
                 }
             }
         } catch (error) {
-            console.error('Backend load error:', error);
+            // Silently fail - fall back to localStorage if backend is unavailable
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn('Backend load error (falling back to local storage):', error);
+            }
         }
         
         return null;
@@ -214,7 +295,16 @@ const storage = {
 
         try {
             const result = await apiCall('/sync', 'GET');
-            if (result.success && result.cloud_enabled) {
+            
+            // Check for errors in response
+            if (result && result.error) {
+                if (typeof console !== 'undefined' && console.warn) {
+                    console.warn('Sync error (non-critical, using local storage):', result.error);
+                }
+                return; // Silently fail - app continues with local storage
+            }
+            
+            if (result && result.success && result.cloud_enabled) {
                 // Save recipes
                 if (result.recipes) {
                     const recipesArray = Object.values(result.recipes);
@@ -272,7 +362,10 @@ const storage = {
                 }
             }
         } catch (error) {
-            console.error('Sync all error:', error);
+            // Silently fail - app continues with local storage if backend is unavailable
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn('Sync all error (non-critical, using local storage):', error);
+            }
         }
     }
 };

@@ -1,11 +1,17 @@
 <?php
 /**
- * Database Initialization Script
- * Drops and recreates all tables for ChefOS
- * Run this once to set up the database
+ * Database Initialization Script for ChefOS
+ * Creates all tables if they don't exist
+ * 
+ * SECURITY: To drop and recreate tables, add ?force=1&confirm=yes to the URL
+ * This prevents accidental data loss in production
  */
 
 require_once __DIR__ . '/config.php';
+
+// Production safety check
+$forceRecreate = isset($_GET['force']) && $_GET['force'] == '1' && 
+                 isset($_GET['confirm']) && $_GET['confirm'] === 'yes';
 
 try {
     $pdo = getDB();
@@ -13,20 +19,23 @@ try {
     // Start transaction
     $pdo->beginTransaction();
     
-    // Drop existing tables if they exist (in reverse order of dependencies)
-    $tables = [
-        'user_data',
-        'recipes',
-        'menus',
-        'shopping_lists',
-        'stores',
-        'pdfs',
-        'settings',
-        'users'
-    ];
-    
-    foreach ($tables as $table) {
-        $pdo->exec("DROP TABLE IF EXISTS `{$table}`");
+    // Only drop tables if explicitly forced (for development/testing)
+    if ($forceRecreate) {
+        // Drop existing tables if they exist (in reverse order of dependencies)
+        $tables = [
+            'user_data',
+            'recipes',
+            'menus',
+            'shopping_lists',
+            'stores',
+            'pdfs',
+            'settings',
+            'users'
+        ];
+        
+        foreach ($tables as $table) {
+            $pdo->exec("DROP TABLE IF EXISTS `{$table}`");
+        }
     }
     
     // Create users table (always stored, regardless of cloud setting)
@@ -136,10 +145,14 @@ try {
     // Commit transaction
     $pdo->commit();
     
+    $message = $forceRecreate 
+        ? 'Database reinitialized successfully (tables were dropped and recreated)'
+        : 'Database initialized successfully (existing tables preserved)';
+    
     echo json_encode([
         'success' => true,
-        'message' => 'Database initialized successfully',
-        'tables_created' => count($tables)
+        'message' => $message,
+        'force_recreate' => $forceRecreate
     ]);
     
 } catch (PDOException $e) {

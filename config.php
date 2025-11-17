@@ -4,10 +4,21 @@
  * Handles environment variables and database connections
  */
 
-// Error reporting for development (disable in production)
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-ini_set('log_errors', 1);
+// Production environment detection
+define('IS_PRODUCTION', getEnvVar('APP_ENV', 'development') === 'production' || 
+                        getEnvVar('ENVIRONMENT', 'development') === 'production');
+
+// Error reporting (production-safe)
+if (IS_PRODUCTION) {
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+    ini_set('display_errors', 0);
+    ini_set('log_errors', 1);
+    ini_set('error_log', sys_get_temp_dir() . '/php-errors.log');
+} else {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 0);
+    ini_set('log_errors', 1);
+}
 
 // CORS headers
 header('Access-Control-Allow-Origin: *');
@@ -86,27 +97,62 @@ function validateAuth($email) {
 }
 
 // Nextcloud helper function (if enabled)
+// This function is non-blocking and will never throw exceptions
+// Returns true if sync succeeded, false if failed, but failures won't break the app
 function syncToNextcloud($userId, $dataType, $data) {
-    if (!NEXTCLOUD_ENABLED) {
-        return true;
+    // Validate Nextcloud is properly configured
+    if (!NEXTCLOUD_ENABLED || empty(NEXTCLOUD_URL) || empty(NEXTCLOUD_USER) || empty(NEXTCLOUD_PASS)) {
+        return false; // Silently fail if not configured
+    }
+    
+    // Validate inputs
+    if (empty($userId) || empty($dataType)) {
+        return false;
     }
     
     try {
         $path = "/remote.php/dav/files/" . NEXTCLOUD_USER . "/chefos/{$userId}/{$dataType}.json";
         $url = rtrim(NEXTCLOUD_URL, '/') . $path;
         
+        // Set up curl with proper timeouts and error handling
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_USERPWD, NEXTCLOUD_USER . ':' . NEXTCLOUD_PASS);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
+        if ($ch === false) {
+            error_log("Nextcloud sync error: Failed to initialize curl");
+            return false;
+        }
+        
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST => 'PUT',
+            CURLOPT_POSTFIELDS => json_encode($data),
+            CURLOPT_USERPWD => NEXTCLOUD_USER . ':' . NEXTCLOUD_PASS,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+            ],
+            CURLOPT_CONNECTTIMEOUT => 5, // 5 second connection timeout
+            CURLOPT_TIMEOUT => 10, // 10 second total timeout
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_FAILONERROR => false, // Don't fail on HTTP error codes, we'll check manually
         ]);
         
         $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $httpCode = 0;
+        $curlError = '';
+        
+        if ($response === false) {
+            $curlError = curl_error($ch);
+            error_log("Nextcloud sync error (curl): " . $curlError);
+        } else {
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        }
+        
         curl_close($ch);
+        
+        // If connection failed or timed out, silently fail
+        if ($response === false || $curlError) {
+            return false;
+        }
         
         // Create directory if needed (404 means path doesn't exist)
         if ($httpCode === 404) {
@@ -115,28 +161,64 @@ function syncToNextcloud($userId, $dataType, $data) {
             $dirUrl = rtrim(NEXTCLOUD_URL, '/') . $dirPath;
             
             $ch = curl_init($dirUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'MKCOL');
-            curl_setopt($ch, CURLOPT_USERPWD, NEXTCLOUD_USER . ':' . NEXTCLOUD_PASS);
-            curl_exec($ch);
-            curl_close($ch);
+            if ($ch !== false) {
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_CUSTOMREQUEST => 'MKCOL',
+                    CURLOPT_USERPWD => NEXTCLOUD_USER . ':' . NEXTCLOUD_PASS,
+                    CURLOPT_CONNECTTIMEOUT => 5,
+                    CURLOPT_TIMEOUT => 10,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_SSL_VERIFYHOST => 2,
+                    CURLOPT_FAILONERROR => false,
+                ]);
+                
+                curl_exec($ch);
+                curl_close($ch);
+            }
             
             // Retry the file upload
             $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-            curl_setopt($ch, CURLOPT_USERPWD, NEXTCLOUD_USER . ':' . NEXTCLOUD_PASS);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-            ]);
-            curl_exec($ch);
-            curl_close($ch);
+            if ($ch !== false) {
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_CUSTOMREQUEST => 'PUT',
+                    CURLOPT_POSTFIELDS => json_encode($data),
+                    CURLOPT_USERPWD => NEXTCLOUD_USER . ':' . NEXTCLOUD_PASS,
+                    CURLOPT_HTTPHEADER => [
+                        'Content-Type: application/json',
+                    ],
+                    CURLOPT_CONNECTTIMEOUT => 5,
+                    CURLOPT_TIMEOUT => 10,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_SSL_VERIFYHOST => 2,
+                    CURLOPT_FAILONERROR => false,
+                ]);
+                
+                $response = curl_exec($ch);
+                if ($response !== false) {
+                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                }
+                curl_close($ch);
+            }
         }
         
-        return $httpCode >= 200 && $httpCode < 300;
+        // Success if HTTP code is 2xx
+        $success = $httpCode >= 200 && $httpCode < 300;
+        
+        if (!$success && $httpCode > 0) {
+            error_log("Nextcloud sync error: HTTP $httpCode for $dataType");
+        }
+        
+        return $success;
+        
     } catch (Exception $e) {
-        error_log("Nextcloud sync error: " . $e->getMessage());
+        // Log but don't throw - this is non-critical
+        error_log("Nextcloud sync error (exception): " . $e->getMessage());
+        return false;
+    } catch (Error $e) {
+        // Catch PHP 7+ errors too
+        error_log("Nextcloud sync error (fatal): " . $e->getMessage());
         return false;
     }
 }

@@ -266,15 +266,21 @@ function handleData($method, $endpoint, $input) {
                                      ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = CURRENT_TIMESTAMP");
                 $stmt->execute([$userId, $recipeId, json_encode($data)]);
                 
-                // Sync to Nextcloud
+                // Sync to Nextcloud (non-blocking - failures won't affect response)
                 if (NEXTCLOUD_ENABLED) {
-                    $recipes = [];
-                    $stmt = $pdo->prepare("SELECT recipe_id, data FROM recipes WHERE user_id = ?");
-                    $stmt->execute([$userId]);
-                    while ($row = $stmt->fetch()) {
-                        $recipes[$row['recipe_id']] = json_decode($row['data'], true);
+                    try {
+                        $recipes = [];
+                        $stmt = $pdo->prepare("SELECT recipe_id, data FROM recipes WHERE user_id = ?");
+                        $stmt->execute([$userId]);
+                        while ($row = $stmt->fetch()) {
+                            $recipes[$row['recipe_id']] = json_decode($row['data'], true);
+                        }
+                        // Don't wait for sync result - non-blocking
+                        @syncToNextcloud($userId, 'recipes', $recipes);
+                    } catch (Exception $e) {
+                        // Silently fail - Nextcloud sync is optional
+                        error_log("Nextcloud sync background error: " . $e->getMessage());
                     }
-                    syncToNextcloud($userId, 'recipes', $recipes);
                 }
                 
                 jsonResponse(['success' => true]);
@@ -287,15 +293,21 @@ function handleData($method, $endpoint, $input) {
                 $stmt = $pdo->prepare("DELETE FROM recipes WHERE user_id = ? AND recipe_id = ?");
                 $stmt->execute([$userId, $recipeId]);
                 
-                // Sync to Nextcloud
+                // Sync to Nextcloud (non-blocking - failures won't affect response)
                 if (NEXTCLOUD_ENABLED) {
-                    $recipes = [];
-                    $stmt = $pdo->prepare("SELECT recipe_id, data FROM recipes WHERE user_id = ?");
-                    $stmt->execute([$userId]);
-                    while ($row = $stmt->fetch()) {
-                        $recipes[$row['recipe_id']] = json_decode($row['data'], true);
+                    try {
+                        $recipes = [];
+                        $stmt = $pdo->prepare("SELECT recipe_id, data FROM recipes WHERE user_id = ?");
+                        $stmt->execute([$userId]);
+                        while ($row = $stmt->fetch()) {
+                            $recipes[$row['recipe_id']] = json_decode($row['data'], true);
+                        }
+                        // Don't wait for sync result - non-blocking
+                        @syncToNextcloud($userId, 'recipes', $recipes);
+                    } catch (Exception $e) {
+                        // Silently fail - Nextcloud sync is optional
+                        error_log("Nextcloud sync background error: " . $e->getMessage());
                     }
-                    syncToNextcloud($userId, 'recipes', $recipes);
                 }
                 
                 jsonResponse(['success' => true]);
@@ -324,14 +336,21 @@ function handleData($method, $endpoint, $input) {
                                      ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = CURRENT_TIMESTAMP");
                 $stmt->execute([$userId, $menuId, json_encode($data)]);
                 
+                // Sync to Nextcloud (non-blocking - failures won't affect response)
                 if (NEXTCLOUD_ENABLED) {
-                    $menus = [];
-                    $stmt = $pdo->prepare("SELECT menu_id, data FROM menus WHERE user_id = ?");
-                    $stmt->execute([$userId]);
-                    while ($row = $stmt->fetch()) {
-                        $menus[$row['menu_id']] = json_decode($row['data'], true);
+                    try {
+                        $menus = [];
+                        $stmt = $pdo->prepare("SELECT menu_id, data FROM menus WHERE user_id = ?");
+                        $stmt->execute([$userId]);
+                        while ($row = $stmt->fetch()) {
+                            $menus[$row['menu_id']] = json_decode($row['data'], true);
+                        }
+                        // Don't wait for sync result - non-blocking
+                        @syncToNextcloud($userId, 'menus', $menus);
+                    } catch (Exception $e) {
+                        // Silently fail - Nextcloud sync is optional
+                        error_log("Nextcloud sync background error: " . $e->getMessage());
                     }
-                    syncToNextcloud($userId, 'menus', $menus);
                 }
                 
                 jsonResponse(['success' => true]);
@@ -344,14 +363,21 @@ function handleData($method, $endpoint, $input) {
                 $stmt = $pdo->prepare("DELETE FROM menus WHERE user_id = ? AND menu_id = ?");
                 $stmt->execute([$userId, $menuId]);
                 
+                // Sync to Nextcloud (non-blocking - failures won't affect response)
                 if (NEXTCLOUD_ENABLED) {
-                    $menus = [];
-                    $stmt = $pdo->prepare("SELECT menu_id, data FROM menus WHERE user_id = ?");
-                    $stmt->execute([$userId]);
-                    while ($row = $stmt->fetch()) {
-                        $menus[$row['menu_id']] = json_decode($row['data'], true);
+                    try {
+                        $menus = [];
+                        $stmt = $pdo->prepare("SELECT menu_id, data FROM menus WHERE user_id = ?");
+                        $stmt->execute([$userId]);
+                        while ($row = $stmt->fetch()) {
+                            $menus[$row['menu_id']] = json_decode($row['data'], true);
+                        }
+                        // Don't wait for sync result - non-blocking
+                        @syncToNextcloud($userId, 'menus', $menus);
+                    } catch (Exception $e) {
+                        // Silently fail - Nextcloud sync is optional
+                        error_log("Nextcloud sync background error: " . $e->getMessage());
                     }
-                    syncToNextcloud($userId, 'menus', $menus);
                 }
                 
                 jsonResponse(['success' => true]);
@@ -372,8 +398,15 @@ function handleData($method, $endpoint, $input) {
                                      ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = CURRENT_TIMESTAMP");
                 $stmt->execute([$userId, json_encode($data)]);
                 
+                // Sync to Nextcloud (non-blocking - failures won't affect response)
                 if (NEXTCLOUD_ENABLED) {
-                    syncToNextcloud($userId, 'shopping', $data);
+                    try {
+                        // Don't wait for sync result - non-blocking
+                        @syncToNextcloud($userId, 'shopping', $data);
+                    } catch (Exception $e) {
+                        // Silently fail - Nextcloud sync is optional
+                        error_log("Nextcloud sync background error: " . $e->getMessage());
+                    }
                 }
                 
                 jsonResponse(['success' => true]);
@@ -402,14 +435,21 @@ function handleData($method, $endpoint, $input) {
                                      ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = CURRENT_TIMESTAMP");
                 $stmt->execute([$userId, $storeId, json_encode($data)]);
                 
+                // Sync to Nextcloud (non-blocking - failures won't affect response)
                 if (NEXTCLOUD_ENABLED) {
-                    $stores = [];
-                    $stmt = $pdo->prepare("SELECT store_id, data FROM stores WHERE user_id = ?");
-                    $stmt->execute([$userId]);
-                    while ($row = $stmt->fetch()) {
-                        $stores[$row['store_id']] = json_decode($row['data'], true);
+                    try {
+                        $stores = [];
+                        $stmt = $pdo->prepare("SELECT store_id, data FROM stores WHERE user_id = ?");
+                        $stmt->execute([$userId]);
+                        while ($row = $stmt->fetch()) {
+                            $stores[$row['store_id']] = json_decode($row['data'], true);
+                        }
+                        // Don't wait for sync result - non-blocking
+                        @syncToNextcloud($userId, 'stores', $stores);
+                    } catch (Exception $e) {
+                        // Silently fail - Nextcloud sync is optional
+                        error_log("Nextcloud sync background error: " . $e->getMessage());
                     }
-                    syncToNextcloud($userId, 'stores', $stores);
                 }
                 
                 jsonResponse(['success' => true]);
@@ -422,14 +462,21 @@ function handleData($method, $endpoint, $input) {
                 $stmt = $pdo->prepare("DELETE FROM stores WHERE user_id = ? AND store_id = ?");
                 $stmt->execute([$userId, $storeId]);
                 
+                // Sync to Nextcloud (non-blocking - failures won't affect response)
                 if (NEXTCLOUD_ENABLED) {
-                    $stores = [];
-                    $stmt = $pdo->prepare("SELECT store_id, data FROM stores WHERE user_id = ?");
-                    $stmt->execute([$userId]);
-                    while ($row = $stmt->fetch()) {
-                        $stores[$row['store_id']] = json_decode($row['data'], true);
+                    try {
+                        $stores = [];
+                        $stmt = $pdo->prepare("SELECT store_id, data FROM stores WHERE user_id = ?");
+                        $stmt->execute([$userId]);
+                        while ($row = $stmt->fetch()) {
+                            $stores[$row['store_id']] = json_decode($row['data'], true);
+                        }
+                        // Don't wait for sync result - non-blocking
+                        @syncToNextcloud($userId, 'stores', $stores);
+                    } catch (Exception $e) {
+                        // Silently fail - Nextcloud sync is optional
+                        error_log("Nextcloud sync background error: " . $e->getMessage());
                     }
-                    syncToNextcloud($userId, 'stores', $stores);
                 }
                 
                 jsonResponse(['success' => true]);
@@ -458,14 +505,21 @@ function handleData($method, $endpoint, $input) {
                                      ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = CURRENT_TIMESTAMP");
                 $stmt->execute([$userId, $pdfId, json_encode($data)]);
                 
+                // Sync to Nextcloud (non-blocking - failures won't affect response)
                 if (NEXTCLOUD_ENABLED) {
-                    $pdfs = [];
-                    $stmt = $pdo->prepare("SELECT pdf_id, data FROM pdfs WHERE user_id = ?");
-                    $stmt->execute([$userId]);
-                    while ($row = $stmt->fetch()) {
-                        $pdfs[$row['pdf_id']] = json_decode($row['data'], true);
+                    try {
+                        $pdfs = [];
+                        $stmt = $pdo->prepare("SELECT pdf_id, data FROM pdfs WHERE user_id = ?");
+                        $stmt->execute([$userId]);
+                        while ($row = $stmt->fetch()) {
+                            $pdfs[$row['pdf_id']] = json_decode($row['data'], true);
+                        }
+                        // Don't wait for sync result - non-blocking
+                        @syncToNextcloud($userId, 'pdfs', $pdfs);
+                    } catch (Exception $e) {
+                        // Silently fail - Nextcloud sync is optional
+                        error_log("Nextcloud sync background error: " . $e->getMessage());
                     }
-                    syncToNextcloud($userId, 'pdfs', $pdfs);
                 }
                 
                 jsonResponse(['success' => true]);
@@ -478,14 +532,21 @@ function handleData($method, $endpoint, $input) {
                 $stmt = $pdo->prepare("DELETE FROM pdfs WHERE user_id = ? AND pdf_id = ?");
                 $stmt->execute([$userId, $pdfId]);
                 
+                // Sync to Nextcloud (non-blocking - failures won't affect response)
                 if (NEXTCLOUD_ENABLED) {
-                    $pdfs = [];
-                    $stmt = $pdo->prepare("SELECT pdf_id, data FROM pdfs WHERE user_id = ?");
-                    $stmt->execute([$userId]);
-                    while ($row = $stmt->fetch()) {
-                        $pdfs[$row['pdf_id']] = json_decode($row['data'], true);
+                    try {
+                        $pdfs = [];
+                        $stmt = $pdo->prepare("SELECT pdf_id, data FROM pdfs WHERE user_id = ?");
+                        $stmt->execute([$userId]);
+                        while ($row = $stmt->fetch()) {
+                            $pdfs[$row['pdf_id']] = json_decode($row['data'], true);
+                        }
+                        // Don't wait for sync result - non-blocking
+                        @syncToNextcloud($userId, 'pdfs', $pdfs);
+                    } catch (Exception $e) {
+                        // Silently fail - Nextcloud sync is optional
+                        error_log("Nextcloud sync background error: " . $e->getMessage());
                     }
-                    syncToNextcloud($userId, 'pdfs', $pdfs);
                 }
                 
                 jsonResponse(['success' => true]);
@@ -521,14 +582,21 @@ function handleData($method, $endpoint, $input) {
                                      ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = CURRENT_TIMESTAMP");
                 $stmt->execute([$userId, $dataType, $dataKey, json_encode($data)]);
                 
+                // Sync to Nextcloud (non-blocking - failures won't affect response)
                 if (NEXTCLOUD_ENABLED) {
-                    $allData = [];
-                    $stmt = $pdo->prepare("SELECT data_key, data FROM user_data WHERE user_id = ? AND data_type = ?");
-                    $stmt->execute([$userId, $dataType]);
-                    while ($row = $stmt->fetch()) {
-                        $allData[$row['data_key']] = json_decode($row['data'], true);
+                    try {
+                        $allData = [];
+                        $stmt = $pdo->prepare("SELECT data_key, data FROM user_data WHERE user_id = ? AND data_type = ?");
+                        $stmt->execute([$userId, $dataType]);
+                        while ($row = $stmt->fetch()) {
+                            $allData[$row['data_key']] = json_decode($row['data'], true);
+                        }
+                        // Don't wait for sync result - non-blocking
+                        @syncToNextcloud($userId, $dataType, $allData);
+                    } catch (Exception $e) {
+                        // Silently fail - Nextcloud sync is optional
+                        error_log("Nextcloud sync background error: " . $e->getMessage());
                     }
-                    syncToNextcloud($userId, $dataType, $allData);
                 }
                 
                 jsonResponse(['success' => true]);
