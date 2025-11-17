@@ -39,10 +39,37 @@ function getEnvVar($key, $default = null) {
 }
 
 // MariaDB Configuration
-define('DB_HOST', getEnvVar('MARIADB_URL', 'localhost'));
-define('DB_NAME', getEnvVar('MARIADB_DATABASE', getEnvVar('MARIADB_NAME', 'chefos')));
-define('DB_USER', getEnvVar('MARIADB_USER', 'root'));
-define('DB_PASS', getEnvVar('MARIADB_PASSWORD', getEnvVar('MARIADB_ROOT_PASSWORD', '')));
+// Parse MARIADB_URL if it's a full connection string, otherwise use individual vars
+$mariadbUrl = getEnvVar('MARIADB_URL', '');
+if (!empty($mariadbUrl) && strpos($mariadbUrl, 'mysql://') === 0) {
+    // Parse connection string: mysql://user:pass@host:port/database
+    $parsed = parse_url($mariadbUrl);
+    define('DB_HOST', $parsed['host'] ?? 'localhost');
+    define('DB_PORT', $parsed['port'] ?? 3306);
+    define('DB_NAME', ltrim($parsed['path'] ?? '', '/') ?: getEnvVar('MARIADB_DATABASE', getEnvVar('MARIADB_NAME', 'default')));
+    define('DB_USER', $parsed['user'] ?? getEnvVar('MARIADB_USER', 'root'));
+    define('DB_PASS', $parsed['pass'] ?? getEnvVar('MARIADB_PASSWORD', getEnvVar('MARIADB_ROOT_PASSWORD', '')));
+} else {
+    // Use individual environment variables
+    $host = getEnvVar('MARIADB_URL', 'localhost');
+    // If MARIADB_URL is just a hostname, use it; otherwise try to extract host from connection string
+    if (strpos($host, '@') !== false) {
+        // Has format user:pass@host:port
+        $parts = explode('@', $host);
+        $hostPart = $parts[1] ?? $host;
+        $hostPort = explode(':', $hostPart);
+        define('DB_HOST', $hostPort[0] ?? 'localhost');
+        define('DB_PORT', isset($hostPort[1]) ? (int)$hostPort[1] : 3306);
+    } else {
+        // Check if host includes port
+        $hostPort = explode(':', $host);
+        define('DB_HOST', $hostPort[0] ?? 'localhost');
+        define('DB_PORT', isset($hostPort[1]) ? (int)$hostPort[1] : 3306);
+    }
+    define('DB_NAME', getEnvVar('MARIADB_DATABASE', getEnvVar('MARIADB_NAME', 'default')));
+    define('DB_USER', getEnvVar('MARIADB_USER', 'root'));
+    define('DB_PASS', getEnvVar('MARIADB_PASSWORD', getEnvVar('MARIADB_ROOT_PASSWORD', '')));
+}
 define('DB_CHARSET', 'utf8mb4');
 
 // Nextcloud Configuration
@@ -51,10 +78,12 @@ define('NEXTCLOUD_URL', getEnvVar('NEXTCLOUD_URL', ''));
 define('NEXTCLOUD_USER', getEnvVar('NEXTCLOUD_USERNAME', getEnvVar('NEXT_USER', '')));
 define('NEXTCLOUD_PASS', getEnvVar('NEXTCLOUD_PASSWORD', getEnvVar('NEXT_PASSWORD', '')));
 
-// Stripe Configuration (for future use)
+// Stripe Configuration
 define('STRIPE_PK', getEnvVar('STRIPE_PK', ''));
 define('STRIPE_SK', getEnvVar('STRIPE_SK', getEnvVar('STRIPE_PK_SECRET', '')));
 define('STRIPE_PRICE_ID', getEnvVar('STRIPE_PRICE_ID', ''));
+define('STRIPE_WEBHOOK_SECRET', getEnvVar('STRIPE_WB', getEnvVar('STRIPE_WB_THIN', '')));
+define('STRIPE_PRODUCT_ID', getEnvVar('STRIPE_PROD', ''));
 
 // Database connection
 function getDB() {
@@ -62,7 +91,8 @@ function getDB() {
     
     if ($pdo === null) {
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+            $port = defined('DB_PORT') ? DB_PORT : 3306;
+            $dsn = "mysql:host=" . DB_HOST . ";port=" . $port . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

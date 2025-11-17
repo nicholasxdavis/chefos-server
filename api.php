@@ -17,10 +17,17 @@ if ($input === null && $_SERVER['CONTENT_LENGTH'] > 0) {
     $input = [];
 }
 
+// Also merge $_POST data for form submissions
+if (!empty($_POST)) {
+    $input = array_merge($input ?? [], $_POST);
+}
+
 // Route handling
+// Path structure: /api/auth/login -> after /api removal: /auth/login -> parts: ['auth', 'login']
+// So pathParts[0] = 'auth', pathParts[1] = 'login'
 try {
-    $action = $pathParts[1] ?? 'index';
-    $endpoint = $pathParts[2] ?? '';
+    $action = $pathParts[0] ?? 'index';
+    $endpoint = $pathParts[1] ?? '';
     
     switch ($action) {
         case 'auth':

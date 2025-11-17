@@ -15,6 +15,12 @@ if (strpos($path, '/api/') === 0) {
     exit;
 }
 
+// Route init.php
+if ($path === '/init.php' || $path === 'init.php') {
+    require 'init.php';
+    exit;
+}
+
 // Serve index.html for all other requests
 if (file_exists('index.html')) {
     readfile('index.html');
