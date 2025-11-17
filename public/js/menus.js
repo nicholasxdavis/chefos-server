@@ -367,7 +367,7 @@ function viewMenu(menuId) {
         const modal = getElement('view-menu-modal');
         if (!modal) return;
         
-        const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+        const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
         const menuRecipes = menu.recipes.map(recipeId => 
             savedRecipes.find(r => r.id === recipeId)
         ).filter(r => r !== undefined);
@@ -445,7 +445,7 @@ function editMenu(menuId) {
         const modal = getElement('edit-menu-modal');
         if (!modal) return;
         
-        const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+        const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
         
         // Update modal content
         const title = getElement('edit-menu-name');
@@ -541,7 +541,7 @@ function addRecipeToMenu(menuId, recipeId) {
         saveMenu(menu);
         
         // Re-render
-        const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+        const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
         const recipesList = getElement('edit-menu-recipes-list');
         const availableRecipesList = getElement('available-recipes-list');
         
@@ -560,7 +560,7 @@ function removeRecipeFromMenu(menuId, recipeId) {
     saveMenu(menu);
     
     // Re-render
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
     const recipesList = getElement('edit-menu-recipes-list');
     const availableRecipesList = getElement('available-recipes-list');
     

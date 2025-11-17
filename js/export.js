@@ -216,7 +216,7 @@ function formatRecipesForTXT(recipes) {
 }
 
 function formatMenuForTXT(menu) {
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
     const menuRecipes = menu.recipes.map(recipeId => 
         savedRecipes.find(r => r.id === recipeId)
     ).filter(r => r !== undefined);
@@ -483,7 +483,7 @@ function formatRecipesForPDF(doc, recipes) {
 }
 
 function formatMenuForPDF(doc, menu) {
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
     const menuRecipes = menu.recipes.map(recipeId => 
         savedRecipes.find(r => r.id === recipeId)
     ).filter(r => r !== undefined);

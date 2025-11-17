@@ -31,7 +31,9 @@ function loadCategories() {
         
         return categories;
     } catch (error) {
-        console.error('Error loading categories:', error);
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('Error loading categories:', error);
+        }
         return DEFAULT_CATEGORIES;
     }
 }
@@ -42,7 +44,9 @@ function saveCategories() {
         storage.set('yieldr_shopping_categories', shoppingState.categories);
         return true;
     } catch (error) {
-        console.error('Error saving categories:', error);
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('Error saving categories:', error);
+        }
         return false;
     }
 }
@@ -502,7 +506,7 @@ function addCustomItemFromModal() {
 
 // Generate shopping list from saved recipes
 function generateShoppingListFromRecipes() {
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
     
     if (savedRecipes.length === 0) {
         showToast('No saved recipes available', 'error');

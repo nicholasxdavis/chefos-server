@@ -441,7 +441,7 @@ function populateRecipeSelect() {
         const select = safeGetElement('calendar-recipe-select');
         if (!select) return;
         
-        const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+        const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
         select.innerHTML = '<option value="">Choose a recipe...</option>';
         
         if (Array.isArray(savedRecipes)) {
@@ -524,7 +524,7 @@ function addItemToCalendar() {
                 return;
             }
             
-            const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+            const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
             const recipe = savedRecipes.find(r => r.id === recipeSelect.value);
             if (recipe) {
                 item.name = recipe.name;

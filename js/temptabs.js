@@ -18,7 +18,7 @@ const tempTabsState = {
  * @param {string} returnPage - Page to return to when closing (optional)
  */
 function openTempTab(pageId, tabName, icon, returnPage = null) {
-    console.log('[OPEN TEMP TAB]', pageId);
+    // Open temp tab
     
     // Check if temp tab already exists
     if (tempTabsState.activeTabs.has(pageId)) {
@@ -44,7 +44,7 @@ function openTempTab(pageId, tabName, icon, returnPage = null) {
     
     // Initialize the form AFTER navigation (use setTimeout to ensure page is rendered)
     setTimeout(() => {
-        console.log('[OPEN TEMP TAB] Initializing forms for', pageId);
+        // Initialize forms
         if (pageId === 'create-recipe') {
             initializeCreateRecipeForm();
         } else if (pageId === 'create-menu') {
@@ -62,7 +62,9 @@ function closeTempTab(pageId) {
     const tabInfo = tempTabsState.activeTabs.get(pageId);
     
     if (!tabInfo) {
-        console.warn(`Temp tab ${pageId} not found`);
+        if (typeof console !== 'undefined' && console.warn) {
+            console.warn(`Temp tab ${pageId} not found`);
+        }
         return;
     }
     
@@ -154,18 +156,18 @@ function clearTempTabForm(pageId) {
  * Initialize temp tabs system
  */
 function initializeTempTabs() {
-    console.log('[TEMP TABS] Initializing temp tabs system...');
+    // Initialize temp tabs system
     
     // Replace "Add Recipe" button functionality with PIN protection
     const addRecipeBtn = document.getElementById('add-recipe-btn');
     const addRecipeBtn2 = document.getElementById('add-recipe-btn-2');
     
     if (addRecipeBtn) {
-        console.log('[TEMP TABS] Setting up Add Recipe button 1');
+        // Setup Add Recipe button 1
         addRecipeBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[TEMP TABS] Add Recipe clicked!');
+            // Add Recipe clicked
             requirePinProtection(() => {
                 openTempTab('create-recipe', 'New Recipe', '#icon-plus');
             });
@@ -173,11 +175,11 @@ function initializeTempTabs() {
     }
     
     if (addRecipeBtn2) {
-        console.log('[TEMP TABS] Setting up Add Recipe button 2');
+        // Setup Add Recipe button 2
         addRecipeBtn2.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[TEMP TABS] Add Recipe 2 clicked!');
+            // Add Recipe 2 clicked
             requirePinProtection(() => {
                 openTempTab('create-recipe', 'New Recipe', '#icon-plus');
             });
@@ -189,11 +191,11 @@ function initializeTempTabs() {
     const createMenuBtn2 = document.getElementById('create-menu-btn-2');
     
     if (createMenuBtn) {
-        console.log('[TEMP TABS] Setting up Create Menu button 1');
+        // Setup Create Menu button 1
         createMenuBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[TEMP TABS] Create Menu clicked!');
+            // Create Menu clicked
             requirePinProtection(() => {
                 openTempTab('create-menu', 'New Menu', '#icon-clipboard');
             });
@@ -201,11 +203,11 @@ function initializeTempTabs() {
     }
     
     if (createMenuBtn2) {
-        console.log('[TEMP TABS] Setting up Create Menu button 2');
+        // Setup Create Menu button 2
         createMenuBtn2.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[TEMP TABS] Create Menu 2 clicked!');
+            // Create Menu 2 clicked
             requirePinProtection(() => {
                 openTempTab('create-menu', 'New Menu', '#icon-clipboard');
             });
@@ -215,7 +217,7 @@ function initializeTempTabs() {
     // NOTE: Forms are NOW initialized when temp tab opens (see openTempTab function)
     // This ensures the forms exist before we try to attach event listeners
     
-    console.log('[TEMP TABS] Temp tabs system initialized successfully!');
+    // Temp tabs system initialized
 }
 
 /**
@@ -227,7 +229,7 @@ function initializeCreateRecipeForm() {
     const imagePreview = document.getElementById('recipe-image-preview');
     const removeImageBtn = document.getElementById('remove-recipe-image');
     
-    console.log('[RECIPE FORM] Initializing... Form:', !!form);
+    // Initialize recipe form
     
     // Handle image upload
     if (imageInput) {
@@ -279,14 +281,16 @@ function initializeCreateRecipeForm() {
     
     // Handle form submission
     if (form) {
-        console.log('[RECIPE FORM] Setting up submit handler');
+        // Setup submit handler
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log('[RECIPE FORM] Form submitted!');
+            // Form submitted
             await saveRecipeFromTempTab();
         });
     } else {
-        console.warn('[RECIPE FORM] Form not found!');
+        if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[RECIPE FORM] Form not found!');
+        }
     }
 }
 
@@ -294,8 +298,6 @@ function initializeCreateRecipeForm() {
  * Save recipe from temp tab form
  */
 async function saveRecipeFromTempTab() {
-    console.log('[SAVE RECIPE] Starting save process...');
-    
     const nameEl = document.getElementById('create-recipe-name');
     const yieldEl = document.getElementById('create-recipe-yield');
     const yieldUnitEl = document.getElementById('create-recipe-yield-unit');
@@ -303,24 +305,11 @@ async function saveRecipeFromTempTab() {
     const instructionsEl = document.getElementById('create-recipe-instructions');
     const imageInput = document.getElementById('recipe-image-input');
     
-    console.log('[SAVE RECIPE] Elements found:', {
-        nameEl: !!nameEl,
-        yieldEl: !!yieldEl,
-        ingredientsEl: !!ingredientsEl
-    });
-    
     const name = nameEl?.value?.trim();
     const yield_val = parseFloat(yieldEl?.value);
     const yieldUnit = yieldUnitEl?.value?.trim();
     const ingredientsText = ingredientsEl?.value?.trim();
     const instructions = instructionsEl?.value?.trim();
-    
-    console.log('[SAVE RECIPE] Raw values:', {
-        name,
-        yield_val,
-        ingredientsLength: ingredientsText?.length || 0,
-        ingredientsPreview: ingredientsText?.substring(0, 100) || 'EMPTY'
-    });
     
     // Validation
     if (!name) {
@@ -339,13 +328,11 @@ async function saveRecipeFromTempTab() {
     }
     
     // Parse ingredients
-    console.log('[SAVE RECIPE] Parsing ingredients...');
-    console.log('[SAVE RECIPE] Ingredients text:', ingredientsText);
     const ingredients = parseRecipe(ingredientsText);
-    console.log('[SAVE RECIPE] Parsed ingredients count:', ingredients?.length);
-    console.log('[SAVE RECIPE] Parsed ingredients:', ingredients);
     if (!ingredients || ingredients.length === 0) {
-        console.error('[SAVE RECIPE] Failed to parse ingredients!');
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('[SAVE RECIPE] Failed to parse ingredients!');
+        }
         showToast('Could not parse ingredients. Please check format. Expected: "2 cups flour" or "Flour - 2 cups"', 'error');
         return;
     }
@@ -373,10 +360,8 @@ async function saveRecipeFromTempTab() {
     };
     
     try {
-        console.log('[SAVE RECIPE] Saving to localStorage...');
-        // Save to localStorage
-        const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
-        console.log('[SAVE RECIPE] Current recipes count:', savedRecipes.length);
+        // Get current recipes using storage layer (syncs to DB if cloud enabled)
+        const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
         
         if (tempTabsState.editingRecipeId) {
             // Update existing recipe
@@ -384,30 +369,37 @@ async function saveRecipeFromTempTab() {
             if (index >= 0) {
                 savedRecipes[index] = { ...savedRecipes[index], ...recipe };
                 showToast('Recipe updated successfully!', 'success');
-                console.log('[SAVE RECIPE] Recipe updated!');
             }
         } else {
             // Add new recipe
             savedRecipes.push(recipe);
             showToast('Recipe saved successfully!', 'success');
-            console.log('[SAVE RECIPE] Recipe added! New count:', savedRecipes.length);
         }
         
-        localStorage.setItem('savedRecipes', JSON.stringify(savedRecipes));
-        console.log('[SAVE RECIPE] Saved to localStorage');
+        // Save using storage layer (syncs to DB if cloud enabled)
+        if (typeof saveRecipesToStorage === 'function') {
+            saveRecipesToStorage(savedRecipes);
+        } else {
+            storage.set('yieldr_recipes', savedRecipes);
+            storage.set('savedRecipes', savedRecipes);
+        }
+        
+        // Update app state if available
+        if (typeof appState !== 'undefined') {
+            appState.recipes = savedRecipes;
+        }
         
         // Close temp tab and refresh recipes page
-        console.log('[SAVE RECIPE] Closing temp tab...');
         closeTempTab('create-recipe');
         
         // Reload recipes if on recipes page
         if (typeof loadSavedRecipes === 'function') {
-            console.log('[SAVE RECIPE] Reloading recipes page...');
             loadSavedRecipes();
         }
-        console.log('[SAVE RECIPE] Complete!');
     } catch (error) {
-        console.error('[SAVE RECIPE] ERROR:', error);
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('[SAVE RECIPE] ERROR:', error);
+        }
         showToast('Failed to save recipe. Storage might be full.', 'error');
     }
 }
@@ -433,7 +425,7 @@ function loadRecipesForMenu() {
     
     if (!container) return;
     
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
     
     if (savedRecipes.length === 0) {
         container.innerHTML = '<p class="text-sm opacity-70 text-center py-8">No recipes yet. Create some recipes first!</p>';
@@ -497,17 +489,19 @@ function updateSelectedRecipesDisplay(selectedRecipes, displayElement) {
 function initializeCreateMenuForm() {
     const form = document.getElementById('create-menu-form');
     
-    console.log('[MENU FORM] Initializing... Form:', !!form);
+    // Initialize menu form
     
     if (form) {
-        console.log('[MENU FORM] Setting up submit handler');
+        // Setup submit handler
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log('[MENU FORM] Form submitted!');
+            // Form submitted
             await saveMenuFromTempTab();
         });
     } else {
-        console.warn('[MENU FORM] Form not found!');
+        if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[MENU FORM] Form not found!');
+        }
     }
 }
 
@@ -561,7 +555,9 @@ async function saveMenuFromTempTab() {
             }
         }
     } catch (error) {
-        console.error('Error saving menu:', error);
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('Error saving menu:', error);
+        }
         showToast('Failed to save menu', 'error');
     }
 }
@@ -571,7 +567,7 @@ async function saveMenuFromTempTab() {
  */
 window.editRecipe = function(recipeId) {
     requirePinProtection(() => {
-        const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+        const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
         const recipe = savedRecipes.find(r => r.id === recipeId);
         
         if (!recipe) {

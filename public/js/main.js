@@ -149,14 +149,54 @@ function convertWithDensity(value, fromUnit, toUnit, ingredient) {
     return value;
 }
 
+// Helper function to get recipes (unified - handles both savedRecipes and yieldr_recipes)
+function getRecipes() {
+    try {
+        // Try yieldr_recipes first (for new recipes), fall back to savedRecipes (for legacy)
+        const recipes = storage.get('yieldr_recipes', []);
+        if (recipes.length > 0) {
+            return recipes;
+        }
+        // Fall back to savedRecipes for backward compatibility
+        const legacyRecipes = storage.get('savedRecipes', []);
+        if (legacyRecipes.length > 0) {
+            // Migrate to yieldr_recipes
+            storage.set('yieldr_recipes', legacyRecipes);
+        }
+        return legacyRecipes;
+    } catch (error) {
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('Error loading recipes:', error);
+        }
+        return [];
+    }
+}
+
+// Helper function to save recipes (unified - saves to both for compatibility)
+function saveRecipesToStorage(recipes) {
+    try {
+        // Save to both keys for compatibility during transition
+        storage.set('yieldr_recipes', recipes);
+        storage.set('savedRecipes', recipes);
+        return true;
+    } catch (error) {
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('Error saving recipes:', error);
+        }
+        return false;
+    }
+}
+
 // Recipe management functions
 function loadRecipes() {
     try {
-        const recipes = storage.get('yieldr_recipes', []);
+        const recipes = getRecipes();
         appState.recipes = recipes;
         return recipes;
     } catch (error) {
-        console.error('Error loading recipes:', error);
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('Error loading recipes:', error);
+        }
         return [];
     }
 }
@@ -180,10 +220,12 @@ function saveRecipe(recipe) {
             appState.recipes.push(sanitizedRecipe);
         }
         
-        storage.set('yieldr_recipes', appState.recipes);
+        saveRecipesToStorage(appState.recipes);
         return { success: true, recipe: sanitizedRecipe };
     } catch (error) {
-        console.error('Error saving recipe:', error);
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('Error saving recipe:', error);
+        }
         return { success: false, error: error.message };
     }
 }
@@ -191,10 +233,12 @@ function saveRecipe(recipe) {
 function deleteRecipe(recipeId) {
     try {
         appState.recipes = appState.recipes.filter(r => r.id !== recipeId);
-        storage.set('yieldr_recipes', appState.recipes);
+        saveRecipesToStorage(appState.recipes);
         return { success: true };
     } catch (error) {
-        console.error('Error deleting recipe:', error);
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('Error deleting recipe:', error);
+        }
         return { success: false, error: error.message };
     }
 }
@@ -1040,7 +1084,7 @@ function setupEventListeners() {
     const exportRecipesBtn = getElement('export-recipes-btn');
     if (exportRecipesBtn) exportRecipesBtn.addEventListener('click', () => {
         try {
-            const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+            const savedRecipes = getRecipes();
             
             // Validation: Check if there are recipes to export
             if (!savedRecipes || savedRecipes.length === 0) {
@@ -1052,7 +1096,9 @@ function setupEventListeners() {
             showToast(`Preparing to export ${savedRecipes.length} recipe(s)...`, 'info');
             showExportFormatModal('recipes', savedRecipes);
         } catch (error) {
-            console.error('Error loading recipes for export:', error);
+            if (typeof console !== 'undefined' && console.error) {
+                console.error('Error loading recipes for export:', error);
+            }
             showToast('Error loading recipes. Please try again.', 'error');
         }
     });
@@ -1100,7 +1146,7 @@ function downloadCompleteBackup() {
         
         // Gather all data
         const allData = {
-            recipes: JSON.parse(localStorage.getItem('savedRecipes') || '[]'),
+            recipes: getRecipes(),
             menus: storage.get('yieldr_menus', []),
             shoppingList: storage.get('yieldr_shopping_list', {}),
             shoppingCategories: storage.get('yieldr_shopping_categories', []),
@@ -1226,8 +1272,8 @@ function performSaveRecipe() {
     };
     
     try {
-        // Save to localStorage
-        const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+        // Get current recipes
+        const savedRecipes = getRecipes();
         
         // Check for duplicate names
         const duplicateIndex = savedRecipes.findIndex(r => r.name.toLowerCase() === recipeName.toLowerCase());
@@ -1244,7 +1290,11 @@ function performSaveRecipe() {
             showToast('Recipe saved successfully!', 'success');
         }
         
-        localStorage.setItem('savedRecipes', JSON.stringify(savedRecipes));
+        // Save using storage layer (syncs to DB if cloud enabled)
+        saveRecipesToStorage(savedRecipes);
+        
+        // Update app state
+        appState.recipes = savedRecipes;
         
         // Refresh recipes list if on recipes page
         const recipesPage = getElement('recipes-page');
@@ -1252,13 +1302,15 @@ function performSaveRecipe() {
             loadSavedRecipes();
         }
     } catch (error) {
-        console.error('Error saving recipe:', error);
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('Error saving recipe:', error);
+        }
         showToast('Failed to save recipe. Storage might be full.', 'error');
     }
 }
 
 function loadSavedRecipes() {
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = getRecipes();
     const recipesGrid = getElement('recipes-grid');
     const emptyState = getElement('recipes-empty-state');
     
@@ -1321,7 +1373,7 @@ function viewRecipe(recipeId) {
 }
 
 function performViewRecipe(recipeId) {
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = getRecipes();
     const recipe = savedRecipes.find(r => r.id === recipeId);
     
     if (!recipe) {
@@ -1419,7 +1471,7 @@ function downloadRecipe() {
 
 // Export all recipes
 function exportAllRecipes() {
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = getRecipes();
     
     if (savedRecipes.length === 0) {
         showToast('No recipes to export', 'error');
@@ -1582,9 +1634,10 @@ function deleteRecipe(recipeId) {
             'Delete Recipe',
             'Are you sure you want to delete this recipe? This action cannot be undone.',
             () => {
-                const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+                const savedRecipes = getRecipes();
                 const filteredRecipes = savedRecipes.filter(r => r.id !== recipeId);
-                localStorage.setItem('savedRecipes', JSON.stringify(filteredRecipes));
+                saveRecipesToStorage(filteredRecipes);
+                appState.recipes = filteredRecipes;
                 
                 loadSavedRecipes();
                 showToast('Recipe deleted successfully!', 'success');
@@ -2548,10 +2601,11 @@ function saveRecipeFromModal() {
         type: 'direct'
     };
     
-    // Save to localStorage
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    // Get current recipes and add new one
+    const savedRecipes = getRecipes();
     savedRecipes.push(recipe);
-    localStorage.setItem('savedRecipes', JSON.stringify(savedRecipes));
+    saveRecipesToStorage(savedRecipes);
+    appState.recipes = savedRecipes;
     
     hideAddRecipeModal();
     loadSavedRecipes();
@@ -2569,7 +2623,7 @@ function editRecipeOld(recipeId) {
     }
     
     requirePinProtection(() => {
-        const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+        const savedRecipes = getRecipes();
         const recipe = savedRecipes.find(r => r.id === recipeId);
         
         if (!recipe) {
@@ -2650,7 +2704,7 @@ function updateRecipeFromModal(recipeId) {
     }
     
     // Update recipe
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = getRecipes();
     const recipeIndex = savedRecipes.findIndex(r => r.id === recipeId);
     
     if (recipeIndex !== -1) {
@@ -2669,7 +2723,8 @@ function updateRecipeFromModal(recipeId) {
             updatedAt: new Date().toISOString()
         };
         
-        localStorage.setItem('savedRecipes', JSON.stringify(savedRecipes));
+        saveRecipesToStorage(savedRecipes);
+        appState.recipes = savedRecipes;
         hideAddRecipeModal();
         loadSavedRecipes();
         showToast('Recipe updated successfully!', 'success');
@@ -2873,7 +2928,7 @@ function showImportRecipeModal() {
         
         if (!modal || !list) return;
         
-        const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+        const savedRecipes = getRecipes();
         
         if (savedRecipes.length === 0) {
             list.innerHTML = `
@@ -2917,7 +2972,7 @@ function hideImportRecipeModal() {
 }
 
 function importRecipeToScaler(recipeId) {
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = getRecipes();
     const recipe = savedRecipes.find(r => r.id === recipeId);
     
     if (!recipe) {
@@ -3192,9 +3247,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         localStorage.setItem('chefos_remember_me', 'true');
                     }
                     
-                    // Sync data from backend if cloud enabled
+                    // Sync data from backend if cloud enabled (non-blocking)
                     if (typeof storage !== 'undefined' && storage.syncAll) {
-                        await storage.syncAll();
+                        storage.syncAll().catch(err => {
+                            // Silently fail - app will use local storage
+                            if (typeof console !== 'undefined' && console.warn) {
+                                console.warn('Sync failed (non-critical):', err);
+                            }
+                        });
                     }
                     
                     // Update billing page with email and plan info
@@ -3269,12 +3329,38 @@ document.addEventListener('DOMContentLoaded', () => {
                         shimmerLoader.style.display = 'flex';
                         shimmerLoader.style.visibility = 'visible';
                         shimmerLoader.style.opacity = '1';
-                        startShimmerLoader();
-                    }
-                    if (appContainer) {
-                        appContainer.style.display = '';
-                        appContainer.style.visibility = '';
-                        appContainer.style.opacity = '';
+                        startShimmerLoader(() => {
+                            // After loader finishes, ensure app is visible
+                            if (appContainer) {
+                                appContainer.style.display = '';
+                                appContainer.style.visibility = '';
+                                appContainer.style.opacity = '';
+                            }
+                            // Sync data from backend (non-blocking) after loader
+                            if (typeof storage !== 'undefined' && storage.syncAll) {
+                                storage.syncAll().then(() => {
+                                    if (typeof loadRecipes === 'function') {
+                                        loadRecipes();
+                                    }
+                                }).catch(err => {
+                                    // Non-critical - continue with local data
+                                    if (typeof loadRecipes === 'function') {
+                                        loadRecipes();
+                                    }
+                                });
+                            } else {
+                                if (typeof loadRecipes === 'function') {
+                                    loadRecipes();
+                                }
+                            }
+                        });
+                    } else {
+                        // No loader, show app immediately
+                        if (appContainer) {
+                            appContainer.style.display = '';
+                            appContainer.style.visibility = '';
+                            appContainer.style.opacity = '';
+                        }
                     }
                     
                     // Re-enable right-click after authentication
@@ -3369,7 +3455,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createAccountModal = document.getElementById('create-account-modal');
     
     if (createAccountForm) {
-        createAccountForm.addEventListener('submit', (e) => {
+        createAccountForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const email = createEmail.value.trim();
@@ -3425,9 +3511,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         localStorage.setItem('chefos_plan_expiry', planExpiry);
                     }
                     
-                    // Sync data from backend
+                    // Sync data from backend (non-blocking)
                     if (typeof storage !== 'undefined' && storage.syncAll) {
-                        await storage.syncAll();
+                        storage.syncAll().catch(err => {
+                            // Silently fail - app will use local storage
+                            if (typeof console !== 'undefined' && console.warn) {
+                                console.warn('Sync failed (non-critical):', err);
+                            }
+                        });
                     }
                     
                     // Update billing page with email
@@ -3513,12 +3604,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 shimmerLoader.style.display = 'flex';
                 shimmerLoader.style.visibility = 'visible';
                 shimmerLoader.style.opacity = '1';
-                startShimmerLoader();
-            }
-            if (appContainer) {
-                appContainer.style.display = '';
-                appContainer.style.visibility = '';
-                appContainer.style.opacity = '';
+                startShimmerLoader(() => {
+                    // After loader finishes, ensure app is visible
+                    if (appContainer) {
+                        appContainer.style.display = '';
+                        appContainer.style.visibility = '';
+                        appContainer.style.opacity = '';
+                    }
+                    // Sync data from backend (non-blocking) after loader
+                    if (typeof storage !== 'undefined' && storage.syncAll) {
+                        storage.syncAll().then(() => {
+                            if (typeof loadRecipes === 'function') {
+                                loadRecipes();
+                            }
+                        }).catch(err => {
+                            // Non-critical - continue with local data
+                            if (typeof loadRecipes === 'function') {
+                                loadRecipes();
+                            }
+                        });
+                    } else {
+                        if (typeof loadRecipes === 'function') {
+                            loadRecipes();
+                        }
+                    }
+                });
+            } else {
+                // No loader, show app immediately
+                if (appContainer) {
+                    appContainer.style.display = '';
+                    appContainer.style.visibility = '';
+                    appContainer.style.opacity = '';
+                }
             }
             
             const welcomeMessage = selectedPlan === 'trial' 

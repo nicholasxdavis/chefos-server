@@ -196,7 +196,9 @@ const storage = {
                             data: data
                         }).catch(err => {
                             // Silently fail - sync is optional, data is still in localStorage and database
-                            console.warn(`${mapping} sync failed (non-critical):`, err);
+                            if (typeof console !== 'undefined' && console.warn) {
+                                console.warn(`${mapping} sync failed (non-critical):`, err);
+                            }
                         });
                     }
                 }

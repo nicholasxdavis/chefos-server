@@ -502,7 +502,7 @@ function addCustomItemFromModal() {
 
 // Generate shopping list from saved recipes
 function generateShoppingListFromRecipes() {
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    const savedRecipes = typeof getRecipes === 'function' ? getRecipes() : storage.get('savedRecipes', []);
     
     if (savedRecipes.length === 0) {
         showToast('No saved recipes available', 'error');
