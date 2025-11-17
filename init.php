@@ -9,15 +9,29 @@
 
 require_once __DIR__ . '/config.php';
 
-// Production safety check
-$forceRecreate = isset($_GET['force']) && $_GET['force'] == '1' && 
-                 isset($_GET['confirm']) && $_GET['confirm'] === 'yes';
+// Production safety check (only for web requests)
+$forceRecreate = false;
+if (php_sapi_name() !== 'cli' && isset($_GET['force']) && $_GET['force'] == '1' && 
+    isset($_GET['confirm']) && $_GET['confirm'] === 'yes') {
+    $forceRecreate = true;
+}
+// For CLI, allow force recreate via command line argument
+if (php_sapi_name() === 'cli' && isset($argv[1]) && $argv[1] === '--force') {
+    $forceRecreate = true;
+}
 
 try {
     $pdo = getDB();
     
-    // Start transaction
-    $pdo->beginTransaction();
+    // Note: DDL statements (CREATE TABLE, DROP TABLE) auto-commit in MySQL/MariaDB
+    // So we don't strictly need transactions, but we'll use them for consistency
+    // Start transaction (will be auto-committed by DDL statements, but that's OK)
+    try {
+        $pdo->beginTransaction();
+    } catch (PDOException $e) {
+        // If transaction fails to start, continue anyway (DDL will work)
+        // This can happen if we're already in a transaction or DDL auto-committed
+    }
     
     // Only drop tables if explicitly forced (for development/testing)
     if ($forceRecreate) {
@@ -142,27 +156,62 @@ try {
         INDEX `idx_data_type` (`data_type`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     
-    // Commit transaction
-    $pdo->commit();
+    // Commit transaction only if we're still in one
+    if ($pdo->inTransaction()) {
+        $pdo->commit();
+    }
     
     $message = $forceRecreate 
         ? 'Database reinitialized successfully (tables were dropped and recreated)'
         : 'Database initialized successfully (existing tables preserved)';
     
-    echo json_encode([
+    $output = [
         'success' => true,
         'message' => $message,
         'force_recreate' => $forceRecreate
-    ]);
+    ];
+    
+    // Output JSON (or plain text if running from CLI)
+    if (php_sapi_name() === 'cli') {
+        echo json_encode($output, JSON_PRETTY_PRINT) . "\n";
+    } else {
+        echo json_encode($output);
+    }
     
 } catch (PDOException $e) {
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
+    // Rollback only if we're in a transaction
+    if (isset($pdo) && $pdo->inTransaction()) {
+        try {
+            $pdo->rollBack();
+        } catch (PDOException $rollbackError) {
+            // Ignore rollback errors
+        }
     }
-    http_response_code(500);
-    echo json_encode([
+    
+    $errorOutput = [
         'success' => false,
         'error' => 'Database initialization failed: ' . $e->getMessage()
-    ]);
+    ];
+    
+    // Output error (or plain text if running from CLI)
+    if (php_sapi_name() === 'cli') {
+        echo json_encode($errorOutput, JSON_PRETTY_PRINT) . "\n";
+    } else {
+        http_response_code(500);
+        echo json_encode($errorOutput);
+    }
+} catch (Exception $e) {
+    // Handle any other exceptions
+    $errorOutput = [
+        'success' => false,
+        'error' => 'Initialization failed: ' . $e->getMessage()
+    ];
+    
+    if (php_sapi_name() === 'cli') {
+        echo json_encode($errorOutput, JSON_PRETTY_PRINT) . "\n";
+    } else {
+        http_response_code(500);
+        echo json_encode($errorOutput);
+    }
 }
 
